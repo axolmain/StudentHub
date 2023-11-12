@@ -1,7 +1,7 @@
 ﻿using System.Collections.Concurrent;
-using Backend.Services.DataService;
+using StudentHub.Server.Services.DataService;
 
-namespace Backend.Services;
+namespace StudentHub.Server.Services;
 
 public class TextEmbeddingService
 {

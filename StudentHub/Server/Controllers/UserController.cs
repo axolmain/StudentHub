@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -19,9 +18,9 @@ public class UserController : ControllerBase
     }
 
     [HttpGet("GetUserId")]
-    public async Task<ActionResult<string>> GetUserId(string userName)
+    public Task<ActionResult<string>> GetUserId(string userName)
     {
         var user = _userManager.Users.FirstOrDefault(u => u.UserName == userName);
-        return user?.Id;
+        return Task.FromResult<ActionResult<string>>(user?.Id);
     }
 }

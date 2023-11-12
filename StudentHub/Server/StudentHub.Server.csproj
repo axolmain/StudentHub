@@ -8,6 +8,12 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="Azure.Storage.Blobs" Version="12.19.0" />
+        <PackageReference Include="DocX" Version="2.5.0" />
+        <PackageReference Include="itext7" Version="8.0.1" />
+        <PackageReference Include="Microsoft.SemanticKernel" Version="0.18.230725.3-preview" />
+        <PackageReference Include="Microsoft.SemanticKernel.Connectors.Memory.Weaviate" Version="0.18.230725.3-preview" />
+        <PackageReference Include="Swashbuckle.AspNetCore" Version="6.2.3" />
         <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="7.0.13"/>
         <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="7.0.13"/>
         <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="7.0.13"/>

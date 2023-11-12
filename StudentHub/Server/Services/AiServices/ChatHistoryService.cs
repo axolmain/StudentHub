@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.Caching.Memory;
 
-namespace Backend.Services.AiServices;
+namespace StudentHub.Server.Services.AiServices;
 
 public class ChatHistoryService
 {

@@ -1,4 +1,4 @@
-﻿namespace Backend.Services;
+﻿namespace StudentHub.Server.Services;
 
 public class DevUserAuthService : IUserAuthService
 {

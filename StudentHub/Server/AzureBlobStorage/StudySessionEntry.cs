@@ -1,4 +1,4 @@
-﻿namespace Backend.AzureBlobStorage;
+﻿namespace StudentHub.Server.AzureBlobStorage;
 
 public class StudySessionEntry
 {

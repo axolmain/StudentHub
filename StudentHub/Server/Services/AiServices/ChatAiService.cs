@@ -4,7 +4,7 @@ using Microsoft.SemanticKernel.Orchestration;
 using Microsoft.SemanticKernel.SemanticFunctions;
 using Microsoft.SemanticKernel.SkillDefinition;
 
-namespace Backend.Services.AiServices;
+namespace StudentHub.Server.Services.AiServices;
 
 public class ChatAiService
 {
@@ -30,7 +30,7 @@ public class ChatAiService
 
     public async Task<string> Execute(string userQuestion, string studySessionId)
     {
-        string? userId = _userAuthService.GetUserUuid();
+        string? userId = studySessionId;
         _kernel = await _kernelService.GetKernel(userId, studySessionId);
         _chatFunction = RegisterChatFunction(_kernel);
         string memoryCollectionName = $"{userId}/{studySessionId}";

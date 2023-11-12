@@ -1,6 +1,6 @@
 ﻿using System.Security.Claims;
 
-namespace Backend.Services;
+namespace StudentHub.Server.Services;
 
 public class UserAuthService : IUserAuthService
 {

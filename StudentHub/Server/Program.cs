@@ -3,8 +3,14 @@ using Microsoft.EntityFrameworkCore;
 using StudentHub.Server.Data;
 using StudentHub.Server.Models;
 using StudentHub.Server.Services;
+using StudentHub.Server.Services.AiServices;
+using StudentHub.Server.Services.DataService;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddSwaggerGen();
+
+builder.Configuration.AddJsonFile("sensitivesettings.json", true);
 
 // Add services to the container.
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ??
@@ -28,7 +34,30 @@ builder.Services.AddAuthentication()
                          throw new InvalidOperationException();
     });
 
+// Globally enable CORS for all origins, methods, and headers
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAllOrigins",
+        builderCors =>
+        {
+            builderCors.AllowAnyOrigin()
+                .AllowAnyMethod()
+                .AllowAnyHeader();
+        });
+});
+
+
+builder.Services.AddScoped<KernelService>();
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<EmbeddingCacheService>();
+builder.Services.AddScoped<ChatAiService>();
+
 builder.Services.AddSingleton<IChatService, ChatService>();
+    builder.Services
+        .AddSingleton<ChatHistoryService>()
+        .AddScoped<IDataService, DataService>()
+        .AddScoped<TextEmbeddingService>()
+        .AddSingleton<IUserAuthService, UserAuthService>();
 
 
 builder.Services.AddControllersWithViews();
@@ -36,6 +65,11 @@ builder.Services.AddRazorPages();
 
 var app = builder.Build();
 
+app.UseSwagger();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Blazor API V1");
+});
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {

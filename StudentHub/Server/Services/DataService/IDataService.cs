@@ -1,6 +1,6 @@
 ﻿using Microsoft.SemanticKernel.Memory;
 
-namespace Backend.Services.DataService;
+namespace StudentHub.Server.Services.DataService;
 
 public interface IDataService
 {

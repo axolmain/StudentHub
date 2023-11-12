@@ -1,11 +1,11 @@
 @page "/chat"
 @using StudentHub.Shared
 @using Microsoft.AspNetCore.Authorization
+@using System.Net.Http.Headers
 @attribute [Authorize]
 
 @inject HttpClient Http
 @inject AuthenticationStateProvider AuthenticationStateProvider
-
 <style>
     body {
         font-family: 'Arial', sans-serif;
@@ -59,7 +59,7 @@
 
 <h3>Chat with ChatGPT</h3>
 <div class="chat-container">
-    @foreach (var message in messages)
+    @foreach (var message in messages ?? new List<ChatMessage>())
     {
         <div class="chat-message">
             @message.UserId: @message.Message
@@ -67,6 +67,9 @@
     }
 </div>
 <div style="text-align: center;">
+    <InputFile OnChange="@OnFileSelected"/>
+    <button type="submit" class="btn btn-success btn-block m-1" @onclick="SubmitFileAsync">Upload</button>
+    <br/>
     <input class="chat-input" @bind="newMessage"/>
     <button class="send-button" @onclick="SendMessage">Send</button>
 </div>
@@ -74,29 +77,86 @@
 
 @code {
     private List<ChatMessage>? messages = new();
+    private long maxFileSize = 1024 * 1024 * 3;
     private string newMessage;
     private AuthenticationState authState;
     private string userId = "";
+    private bool fileUploaded = false;
+    string? userGuid;
+
     protected override async Task OnInitializedAsync()
     {
         authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        userId = await Http.GetStringAsync("User/GetUserId");
-        messages = await Http.GetFromJsonAsync<List<ChatMessage>>($"Chat/GetMessages?userId={userId}");
+        messages = await Http.GetFromJsonAsync<List<ChatMessage>>($"Chat/GetMessages?userId={authState.User.Identity?.Name}");
+        userGuid = await Http.GetStringAsync($"User/GetUserId?userName={authState.User.Identity?.Name}");
     }
 
     private async Task SendMessage()
     {
-        var userId = await Http.GetStringAsync($"User/GetUserId?userName={authState.User.Identity?.Name}");
-
         var message = new ChatMessage
         {
-            UserId = userId ?? "You",
+            UserId = userGuid ?? "You",
             Message = newMessage,
             Timestamp = DateTime.Now
         };
-        await Http.PostAsJsonAsync("Chat/PostMessage", message);
+        messages.Add(message);
+        newMessage = string.Empty;
+        await GetResponse();
+    }
+
+    private async Task GetResponse()
+    {
+        var content = new MultipartFormDataContent();
+        content.Add(new StringContent(newMessage), "question");
+        content.Add(new StringContent("SingleSession"), "studySessionId"); 
+        content.Add(new StringContent(userGuid), "userGuid");
+        var response = await Http.PostAsJsonAsync("/AiTools/chat", content);
+        newMessage = response.ToString();
+        var message = new ChatMessage
+        {
+            UserId = userGuid ?? "You",
+            Message = newMessage,
+            Timestamp = DateTime.Now
+        };
         messages.Add(message);
         newMessage = string.Empty;
     }
 
+    private Stream _fileStream = null;
+    IBrowserFile? file;
+    private string _selectedFileName = null;
+
+    private void OnFileSelected(InputFileChangeEventArgs e)
+    {
+        file = e.File;
+        _selectedFileName = file.Name;
+    }
+    
+    private async Task SubmitFileAsync()
+    {
+        Console.WriteLine(file.Name);
+        var content = new MultipartFormDataContent();
+
+        if (file != null)
+        {
+            using var fileStream = file.OpenReadStream(1000000 ); // Adjust as necessary
+            var fileContent = new StreamContent(fileStream);
+            fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
+            content.Add(fileContent, "\"file\"", _selectedFileName);
+        }
+        Console.WriteLine(content.Headers.ToString());
+
+        content.Add(new StringContent("SingleSession"), "sessionName");
+        content.Add(new StringContent(userGuid), "userGuid");
+
+        var response = await Http.PostAsync("StudySession/makesession", content);
+        if (response.IsSuccessStatusCode)
+        {
+            Console.WriteLine("success");
+        }
+        else
+        {
+            Console.WriteLine("fail");
+        }
+    }
 }

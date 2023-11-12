@@ -3,7 +3,7 @@ using iText.Kernel.Pdf;
 using iText.Kernel.Pdf.Canvas.Parser;
 using Xceed.Words.NET;
 
-namespace Backend.Services;
+namespace StudentHub.Server.Services;
 
 public class EmbeddingService
 {

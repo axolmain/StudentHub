@@ -1,14 +1,17 @@
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Memory;
+using Microsoft.SemanticKernel.Connectors.Memory.Weaviate;
 
-namespace Backend.Services;
+
+namespace StudentHub.Server.Services;
 
 public class KernelService
 {
     private readonly IMemoryCache _memoryCache;
     private readonly IConfiguration _configuration;
     private readonly TextEmbeddingService _textEmbeddingService;
+    private WeaviateMemoryStore memoryStore = new("http://31.220.108.226:8080");
 
     public KernelService(IMemoryCache memoryCache, IConfiguration configuration, TextEmbeddingService textEmbeddingService)
     {
@@ -21,14 +24,14 @@ public class KernelService
     {
         string apiKey = _configuration.GetConnectionString("OpenAiApiKey");
 
-        return _memoryCache.GetOrCreateAsync($"kernel_{studySessionId}", async entry =>
+        return _memoryCache.GetOrCreateAsync<IKernel>($"kernel_{studySessionId}", async entry =>
         {
             entry.SetSlidingExpiration(TimeSpan.FromMinutes(10));
 
             var kernel = new KernelBuilder()
                 .WithOpenAIChatCompletionService("gpt-3.5-turbo-16k", apiKey)
                 .WithOpenAITextEmbeddingGenerationService("text-embedding-ada-002", apiKey)
-                .WithMemoryStorage(new VolatileMemoryStore())
+                .WithMemoryStorage(memoryStore)
                 .Build();
 
             IEnumerable<Chunk> chunks = await _textEmbeddingService.GetChunks(userId, studySessionId);
@@ -38,10 +41,5 @@ public class KernelService
 
             return kernel;
         });
-    }
-
-    public void ClearKernel(string studySessionId)
-    {
-        _memoryCache.Remove($"kernel_{studySessionId}");
     }
 }

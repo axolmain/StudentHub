@@ -1,8 +1,8 @@
-using Backend.Services.DataService;
+using StudentHub.Server.Services.DataService;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.SemanticKernel.Memory;
 
-namespace Backend.Services;
+namespace StudentHub.Server.Services;
 
 public class EmbeddingCacheService
 {

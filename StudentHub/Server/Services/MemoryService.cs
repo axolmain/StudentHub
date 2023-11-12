@@ -1,6 +1,6 @@
 using Microsoft.SemanticKernel;
 
-namespace Backend.Services;
+namespace StudentHub.Server.Services;
 
 public class MemoryService
 {
