@@ -1,0 +1,102 @@
+@page "/chat"
+@using StudentHub.Shared
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
+
+@inject HttpClient Http
+@inject AuthenticationStateProvider AuthenticationStateProvider
+
+<style>
+    body {
+        font-family: 'Arial', sans-serif;
+    }
+
+    h3 {
+        text-align: center;
+        color: #333;
+    }
+
+    .chat-container {
+        background-color: #f0f0f0;
+        border: 1px solid #ddd;
+        padding: 20px;
+        border-radius: 10px;
+        margin: 20px auto;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .chat-message {
+        background-color: #fff;
+        border: 1px solid #ddd;
+        padding: 10px 15px;
+        border-radius: 10px;
+        margin-bottom: 10px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+
+    .chat-input {
+        width: calc(100% - 120px);
+        padding: 10px;
+        border-radius: 5px;
+        border: 1px solid #ddd;
+        margin-right: 10px;
+    }
+
+    .send-button {
+        width: 100px;
+        padding: 10px;
+        border-radius: 5px;
+        background-color: #5cb85c;
+        color: white;
+        border: none;
+        cursor: pointer;
+    }
+
+    .send-button:hover {
+        background-color: #4cae4c;
+    }
+</style>
+
+<h3>Chat with ChatGPT</h3>
+<div class="chat-container">
+    @foreach (var message in messages)
+    {
+        <div class="chat-message">
+            @message.UserId: @message.Message
+        </div>
+    }
+</div>
+<div style="text-align: center;">
+    <input class="chat-input" @bind="newMessage"/>
+    <button class="send-button" @onclick="SendMessage">Send</button>
+</div>
+
+
+@code {
+    private List<ChatMessage>? messages = new();
+    private string newMessage;
+    private AuthenticationState authState;
+    private string userId = "";
+    protected override async Task OnInitializedAsync()
+    {
+        authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        userId = await Http.GetStringAsync("User/GetUserId");
+        messages = await Http.GetFromJsonAsync<List<ChatMessage>>($"Chat/GetMessages?userId={userId}");
+    }
+
+    private async Task SendMessage()
+    {
+        var userId = await Http.GetStringAsync($"User/GetUserId?userName={authState.User.Identity?.Name}");
+
+        var message = new ChatMessage
+        {
+            UserId = userId ?? "You",
+            Message = newMessage,
+            Timestamp = DateTime.Now
+        };
+        await Http.PostAsJsonAsync("Chat/PostMessage", message);
+        messages.Add(message);
+        newMessage = string.Empty;
+    }
+
+}
