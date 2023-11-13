@@ -1,7 +1,9 @@
+using System.Text;
 using StudentHub.Server.Services;
 using StudentHub.Server.Services.AiServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using StudentHub.Server.Services.DataService;
 
 namespace StudentHub.Server.Controllers;
 
@@ -11,26 +13,31 @@ public class QuestionModel
 }
 
 [ApiController]
-[Route("[controller]")]
+[Route("octolearnapi/[controller]")]
 public class AiToolsController : ControllerBase
 {
-    private readonly ChatAiService _chatAiService;
-    private readonly ChatHistoryService _chatHistoryService;
+    private readonly ChatAiService chatAiService;
+    private readonly ChatHistoryService chatHistoryService;
+    private readonly IDataService dataService;
 
-    public AiToolsController(ChatAiService chatAiService, ChatHistoryService chatHistoryService)
+    public AiToolsController(ChatAiService chatAiService, ChatHistoryService chatHistoryService,
+        IDataService dataService)
     {
-        _chatAiService = chatAiService;
-        _chatHistoryService = chatHistoryService;
+        this.chatAiService = chatAiService;
+        this.chatHistoryService = chatHistoryService;
+        this.dataService = dataService;
     }
 
     [HttpPost]
-    [Route("chat")]
-    public async Task<ActionResult<IEnumerable<ChatEntry>>> PostQuestion(string question, string studySessionId, string userGuid)
+    [Route("sendChat")]
+    public async Task<IActionResult> PostQuestion(string studySessionId, string userGuid)
     {
-        if (string.IsNullOrEmpty(question))
-            return BadRequest("Question cannot be empty");
-        string response = await _chatAiService.Execute(question, studySessionId);
-        // return Ok(_chatHistoryService.GetMessages(studySessionId));
+        using var reader = new StreamReader(Request.Body, Encoding.UTF8);
+        string question = await reader.ReadToEndAsync();
+        studySessionId = await dataService.GetStudySessionId(studySessionId, userGuid);
+        
+        string response = await chatAiService.Execute(question, studySessionId, userGuid);
+
         return Ok(response);
     }
 }

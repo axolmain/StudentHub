@@ -20,7 +20,7 @@ public class TextEmbeddingService
 
         var tasks = files.Select(async file =>
         {
-            Stream stream = null;
+            Stream? stream = null;
             try
             {
                 (stream, string ext) = await _dataService.GetFile(userId, studySessionId, file.id);

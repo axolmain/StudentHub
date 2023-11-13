@@ -78,6 +78,15 @@ public class DataService : IDataService
             .ToListAsync();
     }
 
+    public async Task<string> GetStudySessionId(string sessionName, string userId)
+    {
+        var sessionId =  await _dbContext.StudySessions
+            .Where(s => s.UserId == userId && s.Name == sessionName)
+            .FirstOrDefaultAsync();
+        
+        return sessionId?.id;
+    }
+
     public async Task<IEnumerable<UserDocument>> GetSessionDocuments(string? userId, string studySessionId)
     {
         return await _dbContext.UserDocuments

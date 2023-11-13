@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StudentHub.Server.Services;
 using StudentHub.Server.Services.AiServices;
+using StudentHub.Server.Services.DataService;
 using StudentHub.Shared;
 
 namespace StudentHub.Server.Controllers;
@@ -12,14 +13,15 @@ namespace StudentHub.Server.Controllers;
 public class ChatController : ControllerBase
 {
     private readonly IChatService _chatService;
-    private readonly ChatAiService _chatAiService;
     private readonly ChatHistoryService _chatHistoryService;
+    private readonly IDataService dataService;
     
-    public ChatController(IChatService chatService, ChatAiService chatAiService, ChatHistoryService chatHistoryService)
+    public ChatController(IChatService chatService, ChatHistoryService chatHistoryService, 
+        IDataService dataService)
     {
         _chatService = chatService;
-        _chatAiService = chatAiService;
         _chatHistoryService = chatHistoryService;
+        this.dataService = dataService;
     }
 
     [HttpGet("GetMessages")]
@@ -29,16 +31,14 @@ public class ChatController : ControllerBase
     }
 
     [HttpPost("PostMessage")]
-    public async Task<IActionResult> PostMessage([FromBody] ChatMessage message, string studySessionId, string userGuid)
+    public async Task<IActionResult> PostMessage([FromBody] ChatMessage message,string studySessionId, string userGuid)
     {
         if (string.IsNullOrEmpty(message.Message))
             return BadRequest("Question cannot be empty");
         
         await _chatService.AddMessage(message);
         
-        studySessionId = "SingleSession";
-        string response = await _chatAiService.Execute(message.Message, studySessionId);
+        studySessionId = await dataService.GetStudySessionId(studySessionId, userGuid);
         return Ok(_chatHistoryService.GetMessages(studySessionId));
-        return Ok();
     }
 }

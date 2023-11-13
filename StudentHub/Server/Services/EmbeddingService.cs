@@ -9,14 +9,14 @@ public class EmbeddingService
 {
     public List<string>? Paragraphs;
 
-    public EmbeddingService(Stream stream, string fileType)
+    public EmbeddingService(Stream? stream, string fileType)
     {
         string? fileToEmbed = ParseFile(stream, fileType);
         List<string> lines = SplitPlainTextLines(fileToEmbed, 1500);
         Paragraphs = SplitPlainTextParagraphs(lines, 1500);
     }
 
-    public string? ParseFile(Stream stream, string fileName)
+    public string? ParseFile(Stream? stream, string fileName)
     {
         string fileType = Path.GetExtension(fileName);
         if (fileType.Equals(".pdf", StringComparison.OrdinalIgnoreCase))

@@ -8,6 +8,7 @@ public interface IDataService
     public Task<string> CreateStudySession(string studySessionName, string userId);
     public Task<IEnumerable<StudySession>> GetStudySessions(string userId);
     public Task<IEnumerable<UserDocument>> GetSessionDocuments(string? userId, string studySessionId);
+    public Task<string> GetStudySessionId(string userId, string sessionName);
 
     public Task<(Stream File, string FileType)> GetFile(string? userId, string studySessionId, string fileId);
 }

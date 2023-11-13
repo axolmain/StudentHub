@@ -1,5 +1,8 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.Connectors.Memory.Weaviate;
+using Microsoft.SemanticKernel.Plugins.Memory;
 using StudentHub.Server.Data;
 using StudentHub.Server.Models;
 using StudentHub.Server.Services;
@@ -7,8 +10,6 @@ using StudentHub.Server.Services.AiServices;
 using StudentHub.Server.Services.DataService;
 
 var builder = WebApplication.CreateBuilder(args);
-
-builder.Services.AddSwaggerGen();
 
 builder.Configuration.AddJsonFile("sensitivesettings.json", true);
 
@@ -51,13 +52,18 @@ builder.Services.AddScoped<KernelService>();
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<EmbeddingCacheService>();
 builder.Services.AddScoped<ChatAiService>();
-
 builder.Services.AddSingleton<IChatService, ChatService>();
-    builder.Services
-        .AddSingleton<ChatHistoryService>()
-        .AddScoped<IDataService, DataService>()
-        .AddScoped<TextEmbeddingService>()
-        .AddSingleton<IUserAuthService, UserAuthService>();
+builder.Services.AddScoped<MemoryBuilder>();
+
+var skFunctionDictionary = CreateSkFunctionDictionary();
+builder.Services.AddSingleton<IDictionary<string, Microsoft.SemanticKernel.ISKFunction>>(skFunctionDictionary);
+
+
+
+builder.Services.AddSingleton<ChatHistoryService>()
+    .AddScoped<IDataService, DataService>()
+    .AddScoped<TextEmbeddingService>()
+    .AddSingleton<IUserAuthService, UserAuthService>();
 
 
 builder.Services.AddControllersWithViews();
@@ -65,11 +71,13 @@ builder.Services.AddRazorPages();
 
 var app = builder.Build();
 
-app.UseSwagger();
-app.UseSwaggerUI(c =>
+IDictionary<string, ISKFunction> CreateSkFunctionDictionary()
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Blazor API V1");
-});
+    var dictionary = new Dictionary<string, ISKFunction>();
+    // Populate your dictionary here
+    return dictionary;
+}
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {

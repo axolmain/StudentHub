@@ -1,19 +1,19 @@
-﻿using StudentHub.Server.Services.DataService;
-using Microsoft.AspNetCore.Components.Authorization;
+﻿using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using StudentHub.Server.Models;
+using StudentHub.Server.Services.DataService;
 
 namespace StudentHub.Server.Controllers;
 
 [ApiController]
-[Route("[controller]")]
+[Route("octolearnapi/[controller]")]
 public class StudySessionController : Controller
 {
     private readonly IDataService _dataService;
     private readonly UserManager<ApplicationUser> _userManager;
     private AuthenticationState authState;
-    
+
     public StudySessionController(IDataService dataService, UserManager<ApplicationUser> userManager)
     {
         _dataService = dataService;
@@ -21,19 +21,23 @@ public class StudySessionController : Controller
     }
 
     [HttpPost("makesession")]
-    public async Task<IActionResult> CreateSession([FromForm] List<IFormFile> files, [FromForm] string sessionName, [FromForm] string userGuid)
+    public async Task<IActionResult> MakeSession(string sessionName, string userGuid)
     {
+        var file = Request.Form.Files[0];
+        string fileName = file.FileName;
+
         string studySessionId = await _dataService.CreateStudySession(sessionName, userGuid);
-        using Stream stream = files[0].OpenReadStream();       
-        await _dataService.UploadFileAsync(files[0].FileName, studySessionId, userGuid, stream);
+        await using var stream = file.OpenReadStream();
+        await _dataService.UploadFileAsync(fileName, studySessionId, userGuid, stream);
 
         return Ok(studySessionId);
     }
 
     [HttpPost("addfile")]
-    public async Task<IActionResult> AddFile([FromForm] IFormFile formFile, [FromForm] string sessionId, [FromForm] string userGuid)
+    public async Task<IActionResult> AddFile([FromForm] IFormFile formFile, [FromForm] string sessionId,
+        [FromForm] string userGuid)
     {
-        using Stream stream = formFile.OpenReadStream();
+        using var stream = formFile.OpenReadStream();
         await _dataService.UploadFileAsync(formFile.FileName, sessionId, userGuid, stream);
 
         return Ok();
@@ -42,7 +46,7 @@ public class StudySessionController : Controller
     [HttpPost("getfiles")]
     public async Task<ActionResult<IEnumerable<UserDocument>>> GetFiles(string sessionId, [FromForm] string userGuid)
     {
-        IEnumerable<UserDocument> files =
+        var files =
             await _dataService.GetSessionDocuments(userGuid, sessionId);
 
         return Ok(files);
