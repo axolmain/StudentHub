@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.SemanticKernel;
-using Microsoft.SemanticKernel.Connectors.Memory.Weaviate;
 using Microsoft.SemanticKernel.Plugins.Memory;
 using StudentHub.Server.Data;
 using StudentHub.Server.Models;
@@ -14,8 +13,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddJsonFile("sensitivesettings.json", true);
 
 // Add services to the container.
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ??
-                       throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
+string connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ??
+                          throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlite(connectionString));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
@@ -56,8 +55,7 @@ builder.Services.AddSingleton<IChatService, ChatService>();
 builder.Services.AddScoped<MemoryBuilder>();
 
 var skFunctionDictionary = CreateSkFunctionDictionary();
-builder.Services.AddSingleton<IDictionary<string, Microsoft.SemanticKernel.ISKFunction>>(skFunctionDictionary);
-
+builder.Services.AddSingleton(skFunctionDictionary);
 
 
 builder.Services.AddSingleton<ChatHistoryService>()

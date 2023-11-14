@@ -12,7 +12,7 @@ public class EmbeddingService
     public EmbeddingService(Stream? stream, string fileType)
     {
         string? fileToEmbed = ParseFile(stream, fileType);
-        List<string> lines = SplitPlainTextLines(fileToEmbed, 1500);
+        var lines = SplitPlainTextLines(fileToEmbed, 1500);
         Paragraphs = SplitPlainTextParagraphs(lines, 1500);
     }
 
@@ -41,7 +41,7 @@ public class EmbeddingService
 
         if (fileType.Equals(".docx", StringComparison.OrdinalIgnoreCase))
         {
-            using DocX? reader = DocX.Load(stream);
+            using var reader = DocX.Load(stream);
             string? textContent = reader.Text;
             return textContent;
         }
@@ -170,21 +170,21 @@ public class EmbeddingService
 
         List<List<char>?> splitOptions = new()
         {
-            new() { '\n', '\r' },
-            new() { '.' },
-            new() { '?', '!' },
-            new() { ';' },
-            new() { ':' },
-            new() { ',' },
-            new() { ')', ']', '}' },
-            new() { ' ' },
-            new() { '-' },
+            new List<char> { '\n', '\r' },
+            new List<char> { '.' },
+            new List<char> { '?', '!' },
+            new List<char> { ';' },
+            new List<char> { ':' },
+            new List<char> { ',' },
+            new List<char> { ')', ']', '}' },
+            new List<char> { ' ' },
+            new List<char> { '-' },
             null
         };
 
         List<string>? result = null;
         bool inputWasSplit;
-        foreach (List<char>? splitOption in splitOptions)
+        foreach (var splitOption in splitOptions)
         {
             if (result is null)
                 result = Split(text, maxTokensPerLine, splitOption, trim, out inputWasSplit);
@@ -203,21 +203,21 @@ public class EmbeddingService
 
         List<List<char>?> splitOptions = new()
         {
-            new() { '.' },
-            new() { '?', '!' },
-            new() { ';' },
-            new() { ':' },
-            new() { ',' },
-            new() { ')', ']', '}' },
-            new() { ' ' },
-            new() { '-' },
-            new() { '\n', '\r' },
+            new List<char> { '.' },
+            new List<char> { '?', '!' },
+            new List<char> { ';' },
+            new List<char> { ':' },
+            new List<char> { ',' },
+            new List<char> { ')', ']', '}' },
+            new List<char> { ' ' },
+            new List<char> { '-' },
+            new List<char> { '\n', '\r' },
             null
         };
 
         List<string>? result = null;
         bool inputWasSplit;
-        foreach (List<char>? splitOption in splitOptions)
+        foreach (var splitOption in splitOptions)
         {
             if (result is null)
                 result = Split(text, maxTokensPerLine, splitOption, trim, out inputWasSplit);

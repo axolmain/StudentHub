@@ -14,6 +14,7 @@ public class ApplicationDbContext : ApiAuthorizationDbContext<ApplicationUser>
         IOptions<OperationalStoreOptions> operationalStoreOptions) : base(options, operationalStoreOptions)
     {
     }
+
     public DbSet<UserDocument> UserDocuments { get; set; } // Table for UserDocuments
     public DbSet<StudySession> StudySessions { get; set; } // Table for StudySessions
 }

@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
-using StudentHub.Server.Services.DataService;
 using Microsoft.AspNetCore.Mvc;
+using StudentHub.Server.Services.DataService;
 
 namespace StudentHub.Server.Controllers;
 
@@ -17,11 +17,11 @@ public class FileController : ControllerBase
     }
 
     [HttpPost("upload")]
-    public async Task<IActionResult> Upload(IFormFile file, string sessionId, string userId)
+    public async Task<IActionResult> Upload(IFormFile file, string sessionName, string userId)
     {
-        using Stream stream = file.OpenReadStream();
+        using var stream = file.OpenReadStream();
 
-        await _dataService.UploadFileAsync(file.FileName, "SingleSession", userId, stream);
+        await _dataService.UploadFileAsync(file.FileName, sessionName, userId, stream);
 
         return Ok();
     }
@@ -29,7 +29,7 @@ public class FileController : ControllerBase
     [HttpPost("makesession")]
     public async Task<IActionResult> MakeSession([FromForm] string sessionName, [FromForm] string userId)
     {
-        await _dataService.CreateStudySession("SingleSession", userId);
+        await _dataService.CreateStudySession(sessionName, userId);
 
         return Ok();
     }

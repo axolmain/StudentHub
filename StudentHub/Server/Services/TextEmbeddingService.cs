@@ -14,9 +14,9 @@ public class TextEmbeddingService
 
     public async Task<IEnumerable<Chunk>> GetChunks(string? userId, string studySessionId)
     {
-        ConcurrentBag<Chunk> chunks = new ConcurrentBag<Chunk>();
+        var chunks = new ConcurrentBag<Chunk>();
 
-        IEnumerable<UserDocument> files = await _dataService.GetSessionDocuments(userId, studySessionId);
+        var files = await _dataService.GetSessionDocuments(userId, studySessionId);
 
         var tasks = files.Select(async file =>
         {

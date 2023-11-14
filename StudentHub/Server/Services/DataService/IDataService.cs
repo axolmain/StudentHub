@@ -1,6 +1,4 @@
-﻿using Microsoft.SemanticKernel.Memory;
-
-namespace StudentHub.Server.Services.DataService;
+﻿namespace StudentHub.Server.Services.DataService;
 
 public interface IDataService
 {

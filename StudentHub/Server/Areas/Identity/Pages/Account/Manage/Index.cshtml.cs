@@ -46,8 +46,8 @@ public class IndexModel : PageModel
 
     private async Task LoadAsync(ApplicationUser user)
     {
-        var userName = await _userManager.GetUserNameAsync(user);
-        var phoneNumber = await _userManager.GetPhoneNumberAsync(user);
+        string userName = await _userManager.GetUserNameAsync(user);
+        string phoneNumber = await _userManager.GetPhoneNumberAsync(user);
 
         Username = userName;
 
@@ -77,7 +77,7 @@ public class IndexModel : PageModel
             return Page();
         }
 
-        var phoneNumber = await _userManager.GetPhoneNumberAsync(user);
+        string phoneNumber = await _userManager.GetPhoneNumberAsync(user);
         if (Input.PhoneNumber != phoneNumber)
         {
             var setPhoneResult = await _userManager.SetPhoneNumberAsync(user, Input.PhoneNumber);

@@ -93,7 +93,7 @@ public class ExternalLoginsModel : PageModel
         await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
 
         // Request a redirect to the external login provider to link a login for the current user
-        var redirectUrl = Url.Page("./ExternalLogins", "LinkLoginCallback");
+        string redirectUrl = Url.Page("./ExternalLogins", "LinkLoginCallback");
         var properties =
             _signInManager.ConfigureExternalAuthenticationProperties(provider, redirectUrl,
                 _userManager.GetUserId(User));
@@ -105,7 +105,7 @@ public class ExternalLoginsModel : PageModel
         var user = await _userManager.GetUserAsync(User);
         if (user == null) return NotFound($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
 
-        var userId = await _userManager.GetUserIdAsync(user);
+        string userId = await _userManager.GetUserIdAsync(user);
         var info = await _signInManager.GetExternalLoginInfoAsync(userId);
         if (info == null) throw new InvalidOperationException("Unexpected error occurred loading external login info.");
 

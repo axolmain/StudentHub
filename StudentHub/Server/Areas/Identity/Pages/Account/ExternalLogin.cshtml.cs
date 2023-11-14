@@ -58,7 +58,7 @@ public class ExternalLoginModel : PageModel
     public IActionResult OnPost(string provider, string returnUrl = null)
     {
         // Request a redirect to the external login provider.
-        var redirectUrl =
+        string redirectUrl =
             Url.Page("./ExternalLogin", "Callback", new { returnUrl });
         var properties =
             _signInManager.ConfigureExternalAuthenticationProperties(provider, redirectUrl);
@@ -147,10 +147,10 @@ public class ExternalLoginModel : PageModel
                 result = await _userManager.AddLoginAsync(user, info);
                 if (result.Succeeded)
                 {
-                    var userId = await _userManager.GetUserIdAsync(user);
-                    var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+                    string userId = await _userManager.GetUserIdAsync(user);
+                    string code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
                     code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
-                    var callbackUrl = Url.Page(
+                    string callbackUrl = Url.Page(
                         "/Account/ConfirmEmail",
                         null,
                         new { area = "Identity", userId, code },
@@ -218,7 +218,7 @@ public class ExternalLoginModel : PageModel
             try
             {
                 // Get email of the ExternalLoginUser
-                var ExternalLoginUserEmail = "";
+                string ExternalLoginUserEmail = "";
                 if (ExternalLoginUser.Principal.HasClaim(c => c.Type == ClaimTypes.Email))
                     ExternalLoginUserEmail =
                         ExternalLoginUser.Principal.FindFirstValue(ClaimTypes.Email);
@@ -226,7 +226,7 @@ public class ExternalLoginModel : PageModel
                 var user = await _userManager.FindByEmailAsync(ExternalLoginUserEmail);
                 if (user != null)
                 {
-                    var CheckPasswordResult =
+                    bool CheckPasswordResult =
                         await _userManager.CheckPasswordAsync(user, Input.Password);
                     if (CheckPasswordResult)
                     {

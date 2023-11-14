@@ -15,47 +15,38 @@ public class ChatHistoryService
     {
         var history = GetCache(sessionId);
 
-        return string.Join("-------------------------\n", history.Select(i => $"{i.sender}: {i.message}"));
+        return string.Join("-------------------------\n", history.Select(i => $"{i.Sender}: {i.Message}"));
     }
 
-    private List<ChatEntry> GetCache(string sessionId)
+    private List<ChatEntry>? GetCache(string sessionId)
     {
-        return _memoryCache.GetOrCreate($"chat_{sessionId}", entry =>
-        {
-            return new List<ChatEntry>();
-        });
+        return _memoryCache.GetOrCreate($"chat_{sessionId}", entry => { return new List<ChatEntry>(); });
     }
 
     public void AddAgentMessage(string sessionId, string message)
     {
-        GetCache(sessionId).Add(new ChatEntry
-        {
-            sender = "bot",
-            message = message
-        });
+        GetCache(sessionId).Add(new ChatEntry("bot", message));
     }
 
     public void AddUserMessage(string sessionId, string message)
     {
-        GetCache(sessionId).Add(new ChatEntry
-        {
-            sender = "user",
-            message = message
-        });
+        GetCache(sessionId).Add(new ChatEntry("user", message));
     }
 
     public IEnumerable<ChatEntry> GetMessages(string sessionId)
     {
-        return GetCache(sessionId).Select(i => new ChatEntry
-        {
-            sender = i.sender,
-            message = i.message,
-        });
+        return GetCache(sessionId).Select(i => new ChatEntry(i.Sender, i.Message));
     }
 }
 
 public class ChatEntry
 {
-    public string sender { get; set; }
-    public string message { get; set; }
+    public ChatEntry(string sender, string message)
+    {
+        Sender = sender;
+        Message = message;
+    }
+
+    public string Sender { get; set; }
+    public string Message { get; set; }
 }

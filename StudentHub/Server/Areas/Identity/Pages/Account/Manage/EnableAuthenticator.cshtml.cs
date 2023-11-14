@@ -86,9 +86,9 @@ public class EnableAuthenticatorModel : PageModel
         }
 
         // Strip spaces and hyphens
-        var verificationCode = Input.Code.Replace(" ", string.Empty).Replace("-", string.Empty);
+        string verificationCode = Input.Code.Replace(" ", string.Empty).Replace("-", string.Empty);
 
-        var is2faTokenValid = await _userManager.VerifyTwoFactorTokenAsync(
+        bool is2faTokenValid = await _userManager.VerifyTwoFactorTokenAsync(
             user, _userManager.Options.Tokens.AuthenticatorTokenProvider, verificationCode);
 
         if (!is2faTokenValid)
@@ -99,7 +99,7 @@ public class EnableAuthenticatorModel : PageModel
         }
 
         await _userManager.SetTwoFactorEnabledAsync(user, true);
-        var userId = await _userManager.GetUserIdAsync(user);
+        string userId = await _userManager.GetUserIdAsync(user);
         _logger.LogInformation("User with ID '{UserId}' has enabled 2FA with an authenticator app.", userId);
 
         StatusMessage = "Your authenticator app has been verified.";
@@ -117,7 +117,7 @@ public class EnableAuthenticatorModel : PageModel
     private async Task LoadSharedKeyAndQrCodeUriAsync(ApplicationUser user)
     {
         // Load the authenticator key & QR code URI to display on the form
-        var unformattedKey = await _userManager.GetAuthenticatorKeyAsync(user);
+        string unformattedKey = await _userManager.GetAuthenticatorKeyAsync(user);
         if (string.IsNullOrEmpty(unformattedKey))
         {
             await _userManager.ResetAuthenticatorKeyAsync(user);
@@ -126,14 +126,14 @@ public class EnableAuthenticatorModel : PageModel
 
         SharedKey = FormatKey(unformattedKey);
 
-        var email = await _userManager.GetEmailAsync(user);
+        string email = await _userManager.GetEmailAsync(user);
         AuthenticatorUri = GenerateQrCodeUri(email, unformattedKey);
     }
 
     private string FormatKey(string unformattedKey)
     {
         var result = new StringBuilder();
-        var currentPosition = 0;
+        int currentPosition = 0;
         while (currentPosition + 4 < unformattedKey.Length)
         {
             result.Append(unformattedKey.AsSpan(currentPosition, 4)).Append(' ');

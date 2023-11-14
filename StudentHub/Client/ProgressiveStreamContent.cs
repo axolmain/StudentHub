@@ -27,8 +27,8 @@ public class ProgressiveStreamContent : StreamContent
     protected override async Task SerializeToStreamAsync(Stream stream, TransportContext context)
     {
         // Define an array of bytes with the the length of the maximum amount of bytes to be pushed per time
-        var buffer = new byte[_maxBuffer];
-        var totalLength = _fileStream.Length;
+        byte[] buffer = new byte[_maxBuffer];
+        long totalLength = _fileStream.Length;
         // Variable that holds the amount of uploaded bytes
         long uploaded = 0;
 
@@ -37,14 +37,14 @@ public class ProgressiveStreamContent : StreamContent
             using (_fileStream)
             {
                 // In this part of code here in every loop we read a chunk of bytes and write them to the stream of the HttpContent
-                var length = await _fileStream.ReadAsync(buffer, 0, _maxBuffer);
+                int length = await _fileStream.ReadAsync(buffer, 0, _maxBuffer);
                 // Check if the amount of bytes read recently, if there is no bytes read break the loop
                 if (length <= 0) break;
 
                 // Add the amount of read bytes to uploaded variable
                 uploaded += length;
                 // Calculate the percntage of the uploaded bytes out of the total remaining
-                var percentage = Convert.ToDouble(uploaded * 100 / _fileStream.Length);
+                double percentage = Convert.ToDouble(uploaded * 100 / _fileStream.Length);
 
                 // Write the bytes to the HttpContent stream
                 await stream.WriteAsync(buffer);

@@ -1,18 +1,16 @@
 using Microsoft.SemanticKernel;
-using Microsoft.SemanticKernel.Memory;
-using Microsoft.SemanticKernel.Orchestration;
 
 namespace StudentHub.Server.Services.AiServices;
 
 public class ChatAiService
 {
-    private readonly EmbeddingCacheService embeddingCacheService;
-    private readonly ChatHistoryService chatHistoryService;
-    private readonly KernelService kernelService;
     private static TextEmbeddingService? textEmbeddingService;
+    private readonly ChatHistoryService chatHistoryService;
+    private readonly EmbeddingCacheService embeddingCacheService;
+    private readonly KernelService kernelService;
     private IKernel? _kernel;
 
-    public ChatAiService(EmbeddingCacheService embeddingCacheService, 
+    public ChatAiService(EmbeddingCacheService embeddingCacheService,
         ChatHistoryService chatHistoryService,
         KernelService kernelService, TextEmbeddingService? textEmbeddingService)
     {
@@ -35,29 +33,33 @@ public class ChatAiService
     private async Task RefreshMemory(IKernel? kernel, string? userId, string studySessionId,
         string memoryCollectionName)
     {
-        if (userId != null && embeddingCacheService.TryGetEmbeddings(studySessionId, out ISemanticTextMemory cachedEmbeddings ))
+        if (userId != null && embeddingCacheService.TryGetEmbeddings(studySessionId, out var cachedEmbeddings))
         {
             kernel?.RegisterMemory(cachedEmbeddings);
             return;
         }
-        IEnumerable<Chunk> chunks = await textEmbeddingService.GetChunks(userId, studySessionId);
-        foreach (Chunk chunk in chunks)
-            await kernelService.SaveMemoryAsync(kernel, memoryCollectionName, chunk.Text, chunk.GetHashCode().ToString(),
+
+        var chunks = await textEmbeddingService.GetChunks(userId, studySessionId);
+        foreach (var chunk in chunks)
+            await kernelService.SaveMemoryAsync(kernel, memoryCollectionName, chunk.Text,
+                chunk.GetHashCode().ToString(),
                 chunk.SourceFile);
         embeddingCacheService.SetEmbeddings(studySessionId, kernel.Memory);
     }
-    
-    private async Task<string> GetChatResponse(IKernel? kernel, string userQuestion, string memoryCollectionName, string sessionId)
+
+    private async Task<string> GetChatResponse(IKernel? kernel, string userQuestion, string memoryCollectionName,
+        string sessionId)
     {
         string? fileContext = null;
         string? memories = await kernelService.RetrieveMemoryAsync(kernel, memoryCollectionName, userQuestion);
-            fileContext = fileContext + Environment.NewLine + memories;
+        fileContext = fileContext + Environment.NewLine + memories;
 
         string history = string.Empty;
 
         chatHistoryService.AddUserMessage(sessionId, userQuestion);
 
-        string result = await kernelService.AskAboutDocumentsAsync(kernel, chatHistoryService.GetChatHistory(sessionId), fileContext, userQuestion);
+        string result = await kernelService.AskAboutDocumentsAsync(kernel, chatHistoryService.GetChatHistory(sessionId),
+            userQuestion, fileContext);
 
         chatHistoryService.AddAgentMessage(sessionId, result);
 

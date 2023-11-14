@@ -43,7 +43,7 @@ public class SetPasswordModel : PageModel
         var user = await _userManager.GetUserAsync(User);
         if (user == null) return NotFound($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
 
-        var hasPassword = await _userManager.HasPasswordAsync(user);
+        bool hasPassword = await _userManager.HasPasswordAsync(user);
 
         if (hasPassword) return RedirectToPage("./ChangePassword");
 

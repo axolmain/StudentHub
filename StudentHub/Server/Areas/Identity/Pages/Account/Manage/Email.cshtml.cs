@@ -59,7 +59,7 @@ public class EmailModel : PageModel
 
     private async Task LoadAsync(ApplicationUser user)
     {
-        var email = await _userManager.GetEmailAsync(user);
+        string email = await _userManager.GetEmailAsync(user);
         Email = email;
 
         Input = new InputModel
@@ -90,13 +90,13 @@ public class EmailModel : PageModel
             return Page();
         }
 
-        var email = await _userManager.GetEmailAsync(user);
+        string email = await _userManager.GetEmailAsync(user);
         if (Input.NewEmail != email)
         {
-            var userId = await _userManager.GetUserIdAsync(user);
-            var code = await _userManager.GenerateChangeEmailTokenAsync(user, Input.NewEmail);
+            string userId = await _userManager.GetUserIdAsync(user);
+            string code = await _userManager.GenerateChangeEmailTokenAsync(user, Input.NewEmail);
             code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
-            var callbackUrl = Url.Page(
+            string callbackUrl = Url.Page(
                 "/Account/ConfirmEmailChange",
                 null,
                 new { area = "Identity", userId, email = Input.NewEmail, code },
@@ -125,11 +125,11 @@ public class EmailModel : PageModel
             return Page();
         }
 
-        var userId = await _userManager.GetUserIdAsync(user);
-        var email = await _userManager.GetEmailAsync(user);
-        var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+        string userId = await _userManager.GetUserIdAsync(user);
+        string email = await _userManager.GetEmailAsync(user);
+        string code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
         code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
-        var callbackUrl = Url.Page(
+        string callbackUrl = Url.Page(
             "/Account/ConfirmEmail",
             null,
             new { area = "Identity", userId, code },

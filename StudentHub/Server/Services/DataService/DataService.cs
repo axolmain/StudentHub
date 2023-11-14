@@ -22,15 +22,15 @@ public class DataService : IDataService
 
     public async Task UploadFileAsync(string fileName, string studySessionId, string userId, Stream fileStream)
     {
-        var containerName = "data";
+        string containerName = "data";
         var blobContainerClient = _blobServiceClient.GetBlobContainerClient(containerName);
         await blobContainerClient.CreateIfNotExistsAsync();
 
-        var id = Guid.NewGuid().ToString();
+        string id = Guid.NewGuid().ToString();
 
         var blobClient = blobContainerClient.GetBlobClient($"{userId}/{studySessionId}/content/{id}");
 
-        var fileType = Path.GetExtension(fileName);
+        string fileType = Path.GetExtension(fileName);
 
         var uploadOptions = new BlobUploadOptions
         {
@@ -56,7 +56,7 @@ public class DataService : IDataService
 
     public async Task<string> CreateStudySession(string studySessionName, string userId)
     {
-        var id = Guid.NewGuid().ToString();
+        string id = Guid.NewGuid().ToString();
 
         var studySession = new StudySession
         {
@@ -80,10 +80,10 @@ public class DataService : IDataService
 
     public async Task<string> GetStudySessionId(string sessionName, string userId)
     {
-        var sessionId =  await _dbContext.StudySessions
+        var sessionId = await _dbContext.StudySessions
             .Where(s => s.UserId == userId && s.Name == sessionName)
             .FirstOrDefaultAsync();
-        
+
         return sessionId?.id;
     }
 
@@ -104,7 +104,7 @@ public class DataService : IDataService
         Response<BlobDownloadInfo>? response = await blobClient.DownloadAsync();
         IDictionary<string, string>? metadata = blobClient.GetPropertiesAsync().Result.Value.Metadata;
 
-        var fileType = metadata["fileType"]; // assuming you have stored file type in metadata
+        string fileType = metadata["fileType"]; // assuming you have stored file type in metadata
 
         var memoryStream = new MemoryStream();
         await response.Value.Content.CopyToAsync(memoryStream);

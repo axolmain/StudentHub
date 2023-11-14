@@ -57,8 +57,8 @@ public class RegisterConfirmationModel : PageModel
         DisplayConfirmAccountLink = true;
         if (DisplayConfirmAccountLink)
         {
-            var userId = await _userManager.GetUserIdAsync(user);
-            var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+            string userId = await _userManager.GetUserIdAsync(user);
+            string code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
             code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
             EmailConfirmationUrl = Url.Page(
                 "/Account/ConfirmEmail",

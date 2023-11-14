@@ -12,11 +12,11 @@ namespace StudentHub.Server.Controllers;
 [Route("[controller]")]
 public class ChatController : ControllerBase
 {
-    private readonly IChatService _chatService;
     private readonly ChatHistoryService _chatHistoryService;
+    private readonly IChatService _chatService;
     private readonly IDataService dataService;
-    
-    public ChatController(IChatService chatService, ChatHistoryService chatHistoryService, 
+
+    public ChatController(IChatService chatService, ChatHistoryService chatHistoryService,
         IDataService dataService)
     {
         _chatService = chatService;
@@ -31,13 +31,13 @@ public class ChatController : ControllerBase
     }
 
     [HttpPost("PostMessage")]
-    public async Task<IActionResult> PostMessage([FromBody] ChatMessage message,string studySessionId, string userGuid)
+    public async Task<IActionResult> PostMessage([FromBody] ChatMessage message, string studySessionId, string userGuid)
     {
         if (string.IsNullOrEmpty(message.Message))
             return BadRequest("Question cannot be empty");
-        
+
         await _chatService.AddMessage(message);
-        
+
         studySessionId = await dataService.GetStudySessionId(studySessionId, userGuid);
         return Ok(_chatHistoryService.GetMessages(studySessionId));
     }

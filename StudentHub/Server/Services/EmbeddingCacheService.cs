@@ -1,4 +1,3 @@
-using StudentHub.Server.Services.DataService;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.SemanticKernel.Memory;
 
@@ -20,7 +19,7 @@ public class EmbeddingCacheService
 
     public void SetEmbeddings(string studySessionId, ISemanticTextMemory embeddings)
     {
-        MemoryCacheEntryOptions cacheEntryOptions = new MemoryCacheEntryOptions
+        var cacheEntryOptions = new MemoryCacheEntryOptions
         {
             // Set your cache expiration preferences here
             SlidingExpiration = TimeSpan.FromMinutes(10)

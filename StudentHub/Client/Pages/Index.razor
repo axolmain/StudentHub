@@ -1,9 +1,139 @@
 ﻿@page "/"
+<style>
+    .landing-page-container {
+        color: #fff;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    .header {
+        display: flex;
+        justify-content: space-between;
+        padding: 1em;
+    }
+    
+    .header h1 {
+        font-size: 2em;
+    }
+    
+    .nav ul {
+        list-style-type: none;
+        display: flex;
+    }
+    
+    .nav li {
+        padding: 0 15px;
+    }
+    
+    .nav a {
+        text-decoration: none;
+        color: #fff;
+    }
+    
+    .hero-section {
+        text-align: center;
+        padding: 2em 0;
+    }
+    
+    .hero-text h2 {
+        font-size: 2.5em;
+        margin-bottom: 0.5em;
+    }
+    
+    .hero-cta .btn-primary {
+        background-color: #00b894;
+        border: none;
+        padding: 10px 20px;
+        margin-right: 10px;
+        color: #fff;
+        border-radius: 5px;
+    }
+    
+    .btn-secondary {
+        background-color: transparent;
+        border: 1px solid #000;
+        padding: 10px 20px;
+        color: #000;
+        border-radius: 5px;
+    }
+        
+    .features-section {
+        padding: 2em 1em;
+        text-align: center;
+    }
+    
+    .features-title {
+        font-size: 2em;
+        margin-bottom: 1em;
+        color: #0b5ed7
+    }
+    
+    .features-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 20px;
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    
+    .feature-card {
+        background-color: #452764;
+        border: 1px solid #ffffff50;
+        border-radius: 10px;
+        padding: 1em;
+        height: 200px; 
+    }
+    
+    .feature-card h4 {
+        margin-bottom: 0.5em;
+        color: #00b894;
+    }
+    
+    .feature-card p {
+        color: #fff;
+    }
+    
+    /* [Footer Styles] */
 
-<PageTitle>Index</PageTitle>
+    .footer {
+        text-align: center;
+        padding: 1em 0;
+        background-color: #fff;
+    }
+</style>
+<div class="landing-page-container">
+    <div class="hero-section">
+        <div class="hero-text">
+            <h2 style="color: #0b5ed7">Welcome to my 3am fixations application</h2>
+            <p style="color: #0b5ed7">
+                Converse with your documents and unleash the power of AI-assisted study. Maybe then<br/>
+                you won't need to stay up as late!
+            </p>
+        </div>
+        <div class="hero-cta">
+            <button class="btn-primary">Get Started</button>
+            <NavLink href="LearnMorePage">
+                <button class="btn-secondary">Learn More</button>
+            </NavLink>
+            <span class="menu-text">Chat</span>
+        </div>
+    </div>
 
-<h1>Hello, world!</h1>
+    <div class="features-section">
+        <h3 class="features-title">Key Features</h3>
+        <div class="features-grid">
+            @for (int i = 0; i < 4; i++)
+            {
+                <div class="feature-card">
+                    <div class="feature-content">
+                        <h4>I want to sleep but can't</h4>
+                        <p>Dynamically made (trust me bro)</p>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
 
-Welcome to your new app.
-
-<SurveyPrompt Title="How is Blazor working for you?"/>
+    <div class="footer">
+        <p color: #0b5ed7>&copy; 2023 SebsApp. All rights reserved.</p>
+    </div>
+</div>

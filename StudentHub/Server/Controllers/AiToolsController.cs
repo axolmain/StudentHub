@@ -1,8 +1,6 @@
 using System.Text;
-using StudentHub.Server.Services;
-using StudentHub.Server.Services.AiServices;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using StudentHub.Server.Services.AiServices;
 using StudentHub.Server.Services.DataService;
 
 namespace StudentHub.Server.Controllers;
@@ -35,7 +33,7 @@ public class AiToolsController : ControllerBase
         using var reader = new StreamReader(Request.Body, Encoding.UTF8);
         string question = await reader.ReadToEndAsync();
         studySessionId = await dataService.GetStudySessionId(studySessionId, userGuid);
-        
+
         string response = await chatAiService.Execute(question, studySessionId, userGuid);
 
         return Ok(response);

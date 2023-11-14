@@ -68,13 +68,13 @@ public class LoginWith2faModel : PageModel
         var user = await _signInManager.GetTwoFactorAuthenticationUserAsync();
         if (user == null) throw new InvalidOperationException("Unable to load two-factor authentication user.");
 
-        var authenticatorCode = Input.TwoFactorCode.Replace(" ", string.Empty).Replace("-", string.Empty);
+        string authenticatorCode = Input.TwoFactorCode.Replace(" ", string.Empty).Replace("-", string.Empty);
 
         var result =
             await _signInManager.TwoFactorAuthenticatorSignInAsync(authenticatorCode, rememberMe,
                 Input.RememberMachine);
 
-        var userId = await _userManager.GetUserIdAsync(user);
+        string userId = await _userManager.GetUserIdAsync(user);
 
         if (result.Succeeded)
         {
