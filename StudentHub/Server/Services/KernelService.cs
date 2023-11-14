@@ -12,105 +12,140 @@ namespace StudentHub.Server.Services;
 
 public class KernelService
 {
-    private readonly IMemoryCache memoryCache;
-    private readonly IConfiguration configuration;
+    private readonly IMemoryCache _memoryCache;
     private readonly TextEmbeddingService textEmbeddingService;
-    private readonly WeaviateMemoryStore memoryStore = new("http://31.220.108.226:8080");
     //private readonly VolatileMemoryStore memoryStore = new();
-    private readonly string? openApiKey;
+    private readonly string? _openApiKey;
 
-    public KernelService(IMemoryCache memoryCache, IConfiguration configuration, TextEmbeddingService textEmbeddingService, MemoryBuilder memoryBuilder, IDictionary<string, ISKFunction> memoryFunctions)
+    public KernelService(IMemoryCache memoryCache, IConfiguration configuration, TextEmbeddingService textEmbeddingService)
     {
-        this.memoryCache = memoryCache;
-        this.configuration = configuration;
-        openApiKey = configuration.GetConnectionString("OpenAiApiKey");
+        _memoryCache = memoryCache;
+        _openApiKey = configuration.GetConnectionString("OpenAiApiKey");
 
         this.textEmbeddingService = textEmbeddingService;
-        this.memoryFunctions = memoryFunctions;
     }
 
-    public Task<IKernel?> GetKernel(string userId, string studySessionId)
-    {
-
-        return memoryCache.GetOrCreateAsync<IKernel>($"kernel_{studySessionId}", async entry =>
+    public async Task<IKernel?> GetKernelAsync(string userId, string studySessionId)
         {
-            entry.SetSlidingExpiration(TimeSpan.FromMinutes(10));
-            var kernel = new KernelBuilder()
-                .WithOpenAIChatCompletionService("gpt-3.5-turbo-16k", openApiKey)
-                .Build();
-            
-            var embeddingGenerator = new OpenAITextEmbeddingGeneration("text-embedding-ada-002", openApiKey);
-            SemanticTextMemory textMemory = new(memoryStore, embeddingGenerator);
-            
-            // Import the TextMemoryPlugin into the Kernel for other functions
-            var memoryPlugin = new TextMemoryPlugin(textMemory);
-            memoryFunctions = kernel.ImportFunctions(memoryPlugin);
-            var memoryWithCustomDb = new MemoryBuilder()
-                .WithOpenAITextEmbeddingGenerationService("text-embedding-ada-002", openApiKey)
-                .WithMemoryStore(memoryStore)
-                .Build();
-                
-            IEnumerable<Chunk> chunks = await textEmbeddingService.GetChunks(userId, studySessionId);
-            foreach (Chunk chunk in chunks)
-                await SaveMemoryAsync(kernel, $"Testing/{userId}/{studySessionId}", chunk.GetHashCode().ToString(), chunk.Text);
+            return await _memoryCache.GetOrCreateAsync($"kernel_{studySessionId}", async entry =>
+            {
+                entry.SetSlidingExpiration(TimeSpan.FromMinutes(10));
 
-            return kernel;
+                var kernel = new KernelBuilder()
+                    .WithOpenAITextCompletionService("gpt-3.5-turbo-16k", _openApiKey)
+                    .WithOpenAITextEmbeddingGenerationService("text-embedding-ada-002", _openApiKey)
+                    .Build();
+                
+                // WeaviateMemoryStore memoryStore = new("http://31.220.108.226:8080");
+                VolatileMemoryStore memoryStore = new();
+                var embeddingGenerator = new OpenAITextEmbeddingGeneration(modelId: "text-embedding-ada-002", _openApiKey);
+            
+                var textMemory = new MemoryBuilder()
+                    .WithTextEmbeddingGeneration(embeddingGenerator)
+                    .WithMemoryStore(memoryStore)
+                    .Build();
+
+                string pluginsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Services/AiServices/plugins/");
+                var orchestratorPlugin = kernel.ImportSemanticFunctionsFromDirectory(pluginsDirectory, "OrchestratorPlugin");
+
+                var memoryPlugin = new TextMemoryPlugin(textMemory);
+                var memoryFunctions = kernel.ImportFunctions(memoryPlugin, "MemoryPlugin");
+
+                string memoryCollectionName = $"Testing/{userId}/{studySessionId}";
+                
+                if (await memoryStore.DoesCollectionExistAsync(memoryCollectionName)) 
+                    return kernel;
+                
+                await memoryStore.CreateCollectionAsync(memoryCollectionName);
+                IEnumerable<Chunk> chunks = await textEmbeddingService.GetChunks(userId, studySessionId);
+                
+                foreach (Chunk chunk in chunks)
+                    await SaveToNewCollectionAsync(kernel, memoryFunctions, memoryCollectionName, chunk.GetHashCode().ToString(), chunk.Text);
+                kernel.RegisterMemory(textMemory);
+                return kernel;
         });
     }
-
-
-    private IDictionary<string, ISKFunction> memoryFunctions;
-
-    public async Task SaveMemoryAsync(IKernel? kernel, string memoryCollectionName, string text, string id,
-        string sourceFile = "")
+    
+    
+    
+    private static async Task<IEnumerable<KernelResult?>> SaveToNewCollectionAsync(IKernel kernel, IDictionary<string, ISKFunction> memoryFunctions, 
+        string collectionName, string chunkText, string chunkHashCode)
     {
-        kernel.Memory.SaveInformationAsync(memoryCollectionName, text, id, sourceFile);
-        // await kernel.Functions.GetFunction("Save").InvokeAsync(kernel, new ContextVariables
-        // {
-        //     [TextMemoryPlugin.CollectionParam] = memoryCollectionName,
-        //     [TextMemoryPlugin.KeyParam] = id,
-        //     ["input"] = text,
-        //     ["sourceFile"] = sourceFile
-        // });
+        var results = new List<KernelResult?>();
+        var result = await kernel.RunAsync(memoryFunctions["Save"], new ContextVariables
+        {
+                [TextMemoryPlugin.CollectionParam] = collectionName,
+                [TextMemoryPlugin.KeyParam] = chunkHashCode,
+                ["input"] = chunkText
+            });
+            results.Add(result);
+        return results;
+    }
+
+    public async Task<string> RunChat(ISemanticTextMemory textMemory, string collectionName, string userQuestion, string userId, string sessionId)
+    {
+        IKernel? kernel = await GetKernelAsync(userId, sessionId);
+        string answer = await ApplyRAG(textMemory, kernel, collectionName, userQuestion);
+        return answer;
+    }
+    
+    private static async Task<string> ApplyRAG(ISemanticTextMemory memory, IKernel kernel, string collectionName, string userQuestion)
+    {
+
+        var context = kernel.CreateNewContext();
+        context.Variables.Add("QUESTION", userQuestion);
+
+        // retrieve user-specific context based on the user input
+        var searchResults = memory.SearchAsync(collectionName, userQuestion);
+        var retrieved = new List<string>();
+        await foreach (var item in searchResults)
+        {
+            retrieved.Add(item.Metadata.Text);
+        }
+        context.Variables.Add("CONTEXT", string.Join(Environment.NewLine, retrieved));
+
+        // run SK function and give it the two variables, input and context
+        var func = kernel.Functions.GetFunction("OrchestratorPlugin", "AskAboutDocument");
+        var answer = await kernel.RunAsync(func, context.Variables);
+
+        return answer.GetValue<string>()!.Trim();
+
+    }
+    
+    public async Task SaveMemoryAsync(IKernel? kernel, string memoryCollectionName, string id, string text, string sourceFile = "")
+    {
+        await kernel.Memory.SaveInformationAsync(memoryCollectionName, id, text, sourceFile);
     }
 
 
-    public async Task<string?> RetrieveMemoryAsync(IKernel? kernel, string memoryCollectionName, string userQuestion)
+    public async Task<string?> RetrieveMemoryAsync(IKernel kernel, string memoryCollectionName, string userQuestion)
     {
-        // FunctionResult results = await kernel.Functions.GetFunction("Recall").InvokeAsync(kernel, new ContextVariables
-        // {
-        //     [TextMemoryPlugin.CollectionParam] = memoryCollectionName,
-        //     [TextMemoryPlugin.LimitParam] = "5",
-        //     [TextMemoryPlugin.RelevanceParam] = "0.5",
-        //     ["input"] = $"Ask: {userQuestion}"
-        // });
-        //
-        // return results.GetValue<string>();
-
         string result = string.Empty;
-        await foreach (MemoryQueryResult memory in kernel.Memory.SearchAsync(memoryCollectionName, userQuestion, 5, 0.5)) 
-            result = $"{result}\r\n \r\n{memory.Metadata.Text} found in {memory.Metadata.Description}";
-        
+        await foreach (var memory in kernel.Memory.SearchAsync(memoryCollectionName, userQuestion, 5)) 
+            result += $"\r\n\r\n{memory.Metadata.Text} found in {memory.Metadata.Description}";
+
         return result;
     }
     
-    public async Task<string> AskAboutDocumentsAsync(IKernel? kernel, string history, string userQuestion, string context)
-    {
-        string pluginsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Services/AiServices/plugins/");
-        var orchestratorPlugin = kernel.ImportSemanticFunctionsFromDirectory(pluginsDirectory, "OrchestratorPlugin");
-
-        // Prepare the variables for the function invocation.
-        var variables = new ContextVariables
-        {
-            ["HISTORY"] = history,
-            ["QUESTION"] = userQuestion,
-            ["CONTEXT"] = context
-        };
-
-        // Invoke the function and obtain the result.
-        var response = await kernel.RunAsync(variables, orchestratorPlugin["AskAboutDocument"]);
-        string result = response.FunctionResults.First().ToString();
-
-        return result;
-    }
+    // public async Task<string> ApplyRAGWrong(string userId, string sessionId, string history, 
+    //     string context, string userQuestion)
+    // {
+    //     var kernel = GetKernelAsync(userId, sessionId);
+    //     string pluginsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Services/AiServices/plugins/");
+    //     var orchestratorPlugin = kernel.ImportSemanticSkillFromDirectory(pluginsDirectory, "OrchestratorPlugin");
+    //
+    //     // Prepare the variables for the function invocation.
+    //     var variables = new ContextVariables
+    //     {
+    //         ["HISTORY"] = history,
+    //         ["QUESTION"] = userQuestion,
+    //         ["CONTEXT"] = context
+    //     };
+    //
+    //     // Invoke the function and obtain the result.
+    //     var response = await kernel.RunAsync(variables, orchestratorPlugin["AskAboutDocument"]);
+    //     string result = response.GetValue<string>();
+    //
+    //     return result;
+    // }
 }
