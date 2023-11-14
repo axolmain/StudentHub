@@ -23,6 +23,7 @@
 - [📦 Features](#-features)
 - [📂 repository Structure](#-repository-structure)
 - [⚙️ Modules](#modules)
+- [🌐 Web Pages](#-web-pages)
 - [🚀 Getting Started](#-getting-started)
     - [🔧 Installation](#-installation)
     - [🤖 Running StudentHub](#-running-StudentHub)
@@ -37,7 +38,10 @@
 
 ## 📍 Overview
 
-StudentHub is a dynamic platform designed for students. It provides a centralized hub for learning resources, aiding academic growth. Current it supports file upload, unique student sessions, and not much else in the way of helping a student grow. Its' future will bring updates for file storage, canvas integration, and provide a single go-to for students to learn and manage their workload. 
+StudentHub is a dynamic platform designed for students. It provides a centralized hub for learning resources, aiding academic growth. Current it supports file upload, unique student sessions, and not much else in the way of helping a student grow. Its' future will bring updates for file storage, canvas integration, and provide a single go-to for students to learn and manage their workload.
+
+Here's a quick demo of the current state of StudentHub:
+[YouTube](https://youtu.be/cMMQheWi1bw)
 
 ---
 
