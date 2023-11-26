@@ -354,24 +354,6 @@ namespace StudentHub.Server.Data.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
-            modelBuilder.Entity("StudentHub.Server.Services.DataService.StudySession", b =>
-                {
-                    b.Property<string>("id")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("UserId")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("id");
-
-                    b.ToTable("StudySessions");
-                });
-
             modelBuilder.Entity("StudentHub.Server.Services.DataService.UserDocument", b =>
                 {
                     b.Property<string>("id")
@@ -396,6 +378,32 @@ namespace StudentHub.Server.Data.Migrations
                     b.HasKey("id");
 
                     b.ToTable("UserDocuments");
+                });
+
+            modelBuilder.Entity("StudentHub.Shared.StudySession", b =>
+                {
+                    b.Property<string>("id")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LastMessageTimeStamp")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SessionName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("id");
+
+                    b.ToTable("StudySessions");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>

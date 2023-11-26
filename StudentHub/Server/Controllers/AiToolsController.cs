@@ -1,14 +1,11 @@
 using System.Text;
+using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using StudentHub.Server.Services.AiServices;
 using StudentHub.Server.Services.DataService;
+using StudentHub.Shared;
 
 namespace StudentHub.Server.Controllers;
-
-public class QuestionModel
-{
-    public string Question { get; set; }
-}
 
 [ApiController]
 [Route("octolearnapi/[controller]")]
@@ -27,15 +24,12 @@ public class AiToolsController : ControllerBase
     }
 
     [HttpPost]
-    [Route("sendChat")]
-    public async Task<IActionResult> PostQuestion(string studySessionId, string userGuid)
+    [Route("sendChat/{studySessionId}/{userGuid}")]
+    public async Task<IActionResult> PostQuestion([FromRoute] string studySessionId, [FromRoute] string userGuid, [FromBody] JsonElement userQuestion)
     {
-        using var reader = new StreamReader(Request.Body, Encoding.UTF8);
-        string question = await reader.ReadToEndAsync();
-        studySessionId = await dataService.GetStudySessionId(studySessionId, userGuid);
-
-        string response = await chatAiService.Execute(question, studySessionId, userGuid);
+        string response = await chatAiService.Execute(userQuestion.ToString(), studySessionId, userGuid);
 
         return Ok(response);
     }
+
 }

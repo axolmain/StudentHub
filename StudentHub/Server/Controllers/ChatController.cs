@@ -29,6 +29,44 @@ public class ChatController : ControllerBase
     {
         return await _chatService.GetMessagesForUser(userId);
     }
+    
+    [HttpPost("SaveChatSession")]
+    public async Task<IActionResult> SaveChatSession([FromBody] List<ChatMessage> messages, string sessionId, string userId)
+    {
+        try
+        {
+            // Here, you should implement logic to save these messages to Cosmos DB.
+            // For example, using the DataService you've shown.
+            await dataService.SaveChatSession(messages, sessionId, userId);
+
+            return Ok();
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Internal server error: {ex}");
+        }
+    }
+    
+    [HttpGet("GetSessionMessages")]
+    public async Task<ActionResult<IEnumerable<ChatMessage>>> GetSessionMessages(string sessionId, string userId)
+    {
+        try
+        {
+            var studySession = await dataService.GetStudySession(userId, sessionId);
+            var messages = studySession.Messages;
+            if (messages == null)
+            {
+                return NotFound("Session not found");
+            }
+            return Ok(messages);
+        }
+        catch (Exception ex)
+        {
+            // Log the exception here
+            return StatusCode(500, $"Internal server error: {ex}");
+        }
+    }
+
 
     [HttpPost("PostMessage")]
     public async Task<IActionResult> PostMessage([FromBody] ChatMessage message, string studySessionId, string userGuid)
@@ -38,7 +76,8 @@ public class ChatController : ControllerBase
 
         await _chatService.AddMessage(message);
 
-        studySessionId = await dataService.GetStudySessionId(studySessionId, userGuid);
+        var studySession = await dataService.GetStudySession(studySessionId, userGuid);
+        studySessionId = studySession.id;
         return Ok(_chatHistoryService.GetMessages(studySessionId));
     }
 }

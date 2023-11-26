@@ -1,5 +1,10 @@
+using Microsoft.DotNet.Scaffolding.Shared;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.Connectors.AI.OpenAI;
+using Microsoft.SemanticKernel.Connectors.AI.OpenAI.TextEmbedding;
+using Microsoft.SemanticKernel.Connectors.Memory.Weaviate;
+using Microsoft.SemanticKernel.Memory;
 using Microsoft.SemanticKernel.Orchestration;
 using Microsoft.SemanticKernel.Plugins.Memory;
 
@@ -31,41 +36,41 @@ public class KernelService
         this.memoryFunctions = memoryFunctions;
     }
 
-    public Task<IKernel?> GetKernel(string userId, string studySessionId)
+    public Task<AiChatObjects?> GetKernel(string userId, string studySessionId)
     {
-        return memoryCache.GetOrCreateAsync<IKernel>($"kernel_{studySessionId}", async entry =>
+        return memoryCache.GetOrCreateAsync<AiChatObjects>($"kernel_{studySessionId}", async entry =>
         {
             entry.SetSlidingExpiration(TimeSpan.FromMinutes(10));
             var kernel = new KernelBuilder()
                 .WithOpenAIChatCompletionService("gpt-3.5-turbo-16k", openApiKey)
                 .WithOpenAITextEmbeddingGenerationService("text-embedding-ada-002", openApiKey)
-                .WithMemoryStorage(memoryStore)
+                .Build();
+            
+            var embeddingGenerator = new OpenAITextEmbeddingGeneration("text-embedding-ada-002", openApiKey);
+            SemanticTextMemory textMemory = new(memoryStore, embeddingGenerator);
+            
+            // Import the TextMemoryPlugin into the Kernel for other functions
+            var memoryPlugin = new TextMemoryPlugin(textMemory);
+            memoryFunctions = kernel.ImportFunctions(memoryPlugin);
+            var memoryWithCustomDb = new MemoryBuilder()
+                .WithOpenAITextEmbeddingGenerationService("text-embedding-ada-002", openApiKey)
+                .WithMemoryStore(memoryStore)
                 .Build();
 
-            // var embeddingGenerator = new OpenAITextEmbeddingGeneration("text-embedding-ada-002", openApiKey);
-            // SemanticTextMemory textMemory = new(memoryStore, embeddingGenerator);
-            //
-            // // Import the TextMemoryPlugin into the Kernel for other functions
-            // var memoryPlugin = new TextMemoryPlugin(textMemory);
-            // memoryFunctions = kernel.ImportFunctions(memoryPlugin);
-            // var memoryWithCustomDb = new MemoryBuilder()
-            //     .WithOpenAITextEmbeddingGenerationService("text-embedding-ada-002", openApiKey)
-            //     .WithMemoryStore(memoryStore)
-            //     .Build();
-
+            var aiChatObjects = new AiChatObjects(kernel, textMemory); 
+            
             var chunks = await textEmbeddingService.GetChunks(userId, studySessionId);
             foreach (var chunk in chunks)
-                await SaveMemoryAsync(kernel, $"Testing/{userId}/{studySessionId}", chunk.GetHashCode().ToString(),
-                    chunk.Text);
+                await SaveMemoryAsync(aiChatObjects.SemanticTextMemory, $"TestingForUser{userId}WithStudySessionId{studySessionId}", chunk.Text, chunk.GetHashCode().ToString());
 
-            return kernel;
+            return aiChatObjects;
         });
     }
 
-    public async Task SaveMemoryAsync(IKernel? kernel, string memoryCollectionName, string text, string id,
+    public async Task SaveMemoryAsync(ISemanticTextMemory? textMemory, string memoryCollectionName, string text, string id,
         string sourceFile = "")
     {
-        kernel.Memory.SaveInformationAsync(memoryCollectionName, text, id, sourceFile);
+        await textMemory.SaveInformationAsync(memoryCollectionName, text, id);
         // await kernel.Functions.GetFunction("Save").InvokeAsync(kernel, new ContextVariables
         // {
         //     [TextMemoryPlugin.CollectionParam] = memoryCollectionName,
@@ -76,7 +81,7 @@ public class KernelService
     }
 
 
-    public async Task<string?> RetrieveMemoryAsync(IKernel? kernel, string memoryCollectionName, string userQuestion)
+    public async Task<string?> RetrieveMemoryAsync(ISemanticTextMemory? textMemory, string memoryCollectionName, string userQuestion)
     {
         // FunctionResult results = await kernel.Functions.GetFunction("Recall").InvokeAsync(kernel, new ContextVariables
         // {
@@ -89,14 +94,13 @@ public class KernelService
         // return results.GetValue<string>();
 
         string result = string.Empty;
-        await foreach (var memory in kernel.Memory.SearchAsync(memoryCollectionName, userQuestion, 5))
+        await foreach (var memory in textMemory.SearchAsync(memoryCollectionName, userQuestion, 5, minRelevanceScore: 0.4))
             result = $"{result}\r\n \r\n{memory.Metadata.Text} found in {memory.Metadata.Description}";
 
         return result;
     }
 
-    public async Task<string> AskAboutDocumentsAsync(IKernel? kernel, string history, string userQuestion,
-        string context)
+    public async Task<string> AskAboutDocumentsAsync(IKernel? kernel, string history, string userQuestion, string context)
     {
         string pluginsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "Services/AiServices/plugins/");
         var orchestratorPlugin = kernel.ImportSemanticFunctionsFromDirectory(pluginsDirectory, "OrchestratorPlugin");

@@ -7,40 +7,41 @@
         <UserSecretsId>StudentHub.Server-CFEE8FD2-A7C1-4D58-B41F-E9DC20044542</UserSecretsId>
     </PropertyGroup>
 
-    <PropertyGroup Condition=" '$(RunConfiguration)' == 'https' "/>
+    <PropertyGroup Condition=" '$(RunConfiguration)' == 'https' " />
     <ItemGroup>
-        <PackageReference Include="Azure.Storage.Blobs" Version="12.19.0"/>
-        <PackageReference Include="DocX" Version="2.5.0"/>
-        <PackageReference Include="itext7" Version="8.0.1"/>
-        <PackageReference Include="Microsoft.SemanticKernel" Version="1.0.0-beta6"/>
-        <PackageReference Include="Microsoft.SemanticKernel.Connectors.Memory.Weaviate" Version="1.0.0-beta6"/>
-        <PackageReference Include="Swashbuckle.AspNetCore" Version="6.2.3"/>
-        <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="7.0.13"/>
-        <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="7.0.13"/>
-        <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="7.0.13"/>
-        <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="7.0.11"/>
+        <PackageReference Include="Azure.Storage.Blobs" Version="12.19.0" />
+        <PackageReference Include="DocX" Version="2.5.0" />
+        <PackageReference Include="itext7" Version="8.0.1" />
+        <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.37.0" />
+        <PackageReference Include="Microsoft.SemanticKernel" Version="1.0.0-beta8" />
+        <PackageReference Include="Microsoft.SemanticKernel.Connectors.Memory.Weaviate" Version="1.0.0-beta8" />
+        <PackageReference Include="Swashbuckle.AspNetCore" Version="6.2.3" />
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="7.0.13" />
+        <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="7.0.13" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="7.0.13" />
+        <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="7.0.11" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\Client\StudentHub.Client.csproj"/>
-        <ProjectReference Include="..\Shared\StudentHub.Shared.csproj"/>
+        <ProjectReference Include="..\Client\StudentHub.Client.csproj" />
+        <ProjectReference Include="..\Shared\StudentHub.Shared.csproj" />
     </ItemGroup>
 
     <ItemGroup>
-        <None Update="app.db" CopyToOutputDirectory="PreserveNewest" ExcludeFromSingleFile="true"/>
+        <None Update="app.db" CopyToOutputDirectory="PreserveNewest" ExcludeFromSingleFile="true" />
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="7.0.13"/>
-        <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="7.0.13"/>
-        <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="7.0.13"/>
-        <PackageReference Include="Microsoft.AspNetCore.ApiAuthorization.IdentityServer" Version="7.0.13"/>
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="7.0.13"/>
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="7.0.13"/>
+        <PackageReference Include="Microsoft.AspNetCore.Diagnostics.EntityFrameworkCore" Version="7.0.13" />
+        <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="7.0.13" />
+        <PackageReference Include="Microsoft.AspNetCore.Identity.UI" Version="7.0.13" />
+        <PackageReference Include="Microsoft.AspNetCore.ApiAuthorization.IdentityServer" Version="7.0.13" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="7.0.13" />
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="7.0.13" />
     </ItemGroup>
 
     <ItemGroup>
-        <Folder Include="Services\AiServices\plugins\OrchestratorPlugin\"/>
+        <Folder Include="Services\AiServices\plugins\OrchestratorPlugin\" />
     </ItemGroup>
 
 </Project>

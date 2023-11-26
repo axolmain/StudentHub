@@ -1,0 +1,86 @@
+@page "/studysessions"
+@using Microsoft.AspNetCore.Authorization
+@using StudentHub.Shared
+@using System.Text.Json
+@using System.Text
+
+@inject NavigationManager NavigationManager
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject HttpClient Http
+@attribute [Authorize]
+
+<style>
+    .chat-tiles {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 10px;
+    }
+    
+    .chat-tile {
+        border: 1px solid #ddd;
+        padding: 10px;
+        border-radius: 5px;
+        background-color: #f9f9f9;
+    }
+</style>
+
+<h3>Your Study Sessions</h3>
+
+@if (studySessions.Count == 0)
+{
+    <p>You have no study sessions</p>
+    <br/>
+    <p>Click the button below to create one</p>
+    <button @onclick="ShowNewChatPopup">New Chat</button>
+    <CreateChatPopUp @ref="createChatPopup"/>
+}
+else
+{
+    <div class="chat-tiles">
+        @foreach (var studySession in studySessions)
+        {
+            <div class="chat-tile" @onclick="() => NavigateToChat(studySession.id)">
+                <h3>@studySession.FileName</h3>
+                <p>Last message sent at:</p>
+                <p>@studySession.LastMessageTimeStamp</p>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private List<StudySession> studySessions = new();
+    private AuthenticationState authState;
+    string? userGuid;
+
+    private CreateChatPopUp createChatPopup;
+
+    private void ShowNewChatPopup()
+    {
+        createChatPopup.Show(userGuid);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            userGuid = await Http.GetStringAsync($"User/GetUserId?userName={authState.User.Identity?.Name}");
+            Console.WriteLine("yes");
+            studySessions = await Http.GetFromJsonAsync<List<StudySession>>($"octolearnapi/StudySession/getallsessions?userGuid={userGuid}") ?? new List<StudySession>();
+            Console.WriteLine("yres" + studySessions.Count);
+        }
+        catch (Exception e)
+        {
+            studySessions = new List<StudySession>();
+            Console.WriteLine($"Error fetching study sessions: {e.Message}");
+        }
+    }
+
+    private void NavigateToChat(string chatId)
+    {
+        NavigationManager.NavigateTo($"/chat/{chatId}");
+    }
+
+}
+

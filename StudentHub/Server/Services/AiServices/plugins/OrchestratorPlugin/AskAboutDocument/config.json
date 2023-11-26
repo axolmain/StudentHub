@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "type": "completion",
-  "description": "Infers an answer about the user's inquiry based on the context provided.",
+  "description": "Infers an answer about the user's question based on the context provided.",
   "completion": {
     "max_tokens": 2000,
     "temperature": 0.4,
@@ -21,7 +21,7 @@
       },
       {
         "name": "CONTEXT",
-        "description": "The context when answering.",
+        "description": "The context to user for generating an answer when answering.",
         "defaultValue": ""
       }
     ]

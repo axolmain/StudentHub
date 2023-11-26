@@ -1,0 +1,120 @@
+@using System.Net.Http.Headers
+@using System.Text.Encodings.Web
+@using System.Web
+@using System.Text.Json
+@using StudentHub.Shared
+@inject IJSRuntime JSRuntime
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+
+<style>
+    .popup-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: rgba(0,0,0,0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    
+    .popup-content {
+        background: white;
+        padding: 20px;
+        border-radius: 5px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    }
+    
+    .popup-content h2 {
+        margin-top: 0;
+    }
+    
+    .popup-content textarea {
+        width: 100%;
+        margin: 10px 0;
+    }
+</style>
+
+@if (IsVisible)
+{
+    <div class="popup-overlay">
+        <div class="popup-content">
+            <h2>Start New Chat</h2>
+            <InputFile OnChange="SelectFile" />
+            <textarea @bind="ChatDescription" placeholder="Describe your chat..." name="ChatDescription"></textarea>
+
+            <button @onclick="StartChat">Start Chat</button>
+            <button @onclick="Cancel">Cancel</button>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public EventCallback<bool> OnChatCreated { get; set; }
+    
+    private string userGuid { get; set; }
+    private bool IsVisible { get; set; }
+    private string ChatDescription { get; set; }
+    private IBrowserFile SelectedFile { get; set; }
+    public StudySession Session { get; set; }
+
+    public void Show(string userGuid)
+    {
+        this.userGuid = userGuid;
+        IsVisible = true;
+        StateHasChanged();
+    }
+
+    private IBrowserFile? selectedFile;
+
+    private Task SelectFile(InputFileChangeEventArgs e)
+    {
+        selectedFile = e.File;
+        return Task.CompletedTask;
+    }
+
+    private async Task StartChat()
+    {
+        if (selectedFile != null)
+        {
+            await using var stream = selectedFile.OpenReadStream();
+            using var content = new MultipartFormDataContent();
+            var fileContent = new StreamContent(stream);
+
+            fileContent.Headers.ContentDisposition = new ContentDispositionHeaderValue("form-data")
+            {
+                Name = "files", // This should be 'files', as your API expects a list, even if it's just one file
+                FileName = selectedFile.Name
+            };
+
+            content.Add(fileContent);
+            content.Add(new StringContent(userGuid), "userId"); // Ensure the parameter name matches with the API
+            content.Add(new StringContent("CoolChatForUser"), "sessionName"); // Ensure the parameter name matches with the API
+
+            var makeSession = await Http.PostAsync("octolearnapi/StudySession/makesession", content);
+
+            var sessionId = await makeSession.Content.ReadAsStringAsync();
+            var response = await Http.GetAsync($"octolearnapi/StudySession/getsession/?sessionId={sessionId}&userId={userGuid}");
+            Session = await response.Content.ReadFromJsonAsync<StudySession>();
+            
+            // Reset fields
+            ChatDescription = string.Empty;
+            SelectedFile = null;
+
+            StateHasChanged();
+            string chatId = Session.id;
+            NavigationManager.NavigateTo($"/chat/{chatId}");
+        }
+    }
+
+    private void Cancel()
+    {
+        IsVisible = false;
+        ChatDescription = string.Empty;
+        SelectedFile = null;
+        StateHasChanged();
+    }
+}

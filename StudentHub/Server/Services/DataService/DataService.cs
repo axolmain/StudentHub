@@ -1,8 +1,13 @@
-﻿using Azure;
+﻿using System.Diagnostics;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Azure.Cosmos;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
+using NuGet.Protocol;
 using StudentHub.Server.Data;
+using StudentHub.Shared;
 
 // Assuming your models are defined here
 
@@ -12,36 +17,48 @@ public class DataService : IDataService
 {
     private const string ContainerName = "data"; // It could be a more general name or specified in the configuration
     private readonly BlobServiceClient _blobServiceClient;
-    private readonly ApplicationDbContext _dbContext; // EF Core DB context
+    private readonly Container _sessionsContainer;
+    private readonly Container _filesContainer;
+    private readonly CosmosClient _cosmosClient;
+    private readonly string _containerName = "data"; // It could be a more general name or specified in the configuration
+    
 
     public DataService(IConfiguration configuration, ApplicationDbContext dbContext)
     {
         _blobServiceClient = new BlobServiceClient(configuration.GetConnectionString("AzureBlobConnectionString1"));
-        _dbContext = dbContext;
+        _cosmosClient = new CosmosClient(configuration.GetConnectionString("AzureCosmosConnectionString"));
+        Database? database = _cosmosClient.GetDatabase("userDataMap");
+        _filesContainer = database.GetContainer("sessionFiles");
+        _sessionsContainer = database.GetContainer("studySessions");
     }
 
     public async Task UploadFileAsync(string fileName, string studySessionId, string userId, Stream fileStream)
     {
-        string containerName = "data";
-        var blobContainerClient = _blobServiceClient.GetBlobContainerClient(containerName);
+        string containerName = "data"; // It could be a more general name or specified in the configuration
+        BlobContainerClient? blobContainerClient = _blobServiceClient.GetBlobContainerClient(containerName);
         await blobContainerClient.CreateIfNotExistsAsync();
 
         string id = Guid.NewGuid().ToString();
 
-        var blobClient = blobContainerClient.GetBlobClient($"{userId}/{studySessionId}/content/{id}");
+        // Include userId in the blob's path
+        BlobClient? blobClient = blobContainerClient.GetBlobClient($"{userId}/{studySessionId}/content/{id}");
 
+        // Parse the file type from the file name
         string fileType = Path.GetExtension(fileName);
 
-        var uploadOptions = new BlobUploadOptions
+        BlobUploadOptions uploadOptions = new BlobUploadOptions
         {
-            Metadata = new Dictionary<string, string> { { "fileType", fileType } }
+            Metadata = new Dictionary<string, string>
+            {
+                { "fileType", fileType }
+            }
         };
 
         await blobClient.UploadAsync(fileStream, uploadOptions);
+
         fileStream.Close();
 
-        // Save file metadata to your database instead of Cosmos DB
-        var document = new UserDocument
+        UserDocument document = new UserDocument
         {
             id = id,
             FileName = fileName,
@@ -50,63 +67,138 @@ public class DataService : IDataService
             UserId = userId
         };
 
-        _dbContext.UserDocuments.Add(document);
-        await _dbContext.SaveChangesAsync();
+        await _filesContainer.CreateItemAsync(document, new PartitionKey(studySessionId));
     }
+
 
     public async Task<string> CreateStudySession(string studySessionName, string userId)
     {
         string id = Guid.NewGuid().ToString();
 
-        var studySession = new StudySession
+        StudySession studySession = new StudySession
         {
-            Name = studySessionName,
+            SessionName = studySessionName,
             id = id,
             UserId = userId
         };
 
-        _dbContext.StudySessions.Add(studySession);
-        await _dbContext.SaveChangesAsync();
+        await _sessionsContainer.CreateItemAsync(studySession, new PartitionKey(userId));
 
         return id;
     }
+    
+    public async Task SaveChatSession(List<ChatMessage> messages, string sessionId, string userId)
+    {
+        // Serialize the list of messages to JSON
+        string serializedMessages = JsonSerializer.Serialize(messages);
 
+        string sqlQueryText = "SELECT * FROM c WHERE c.UserId = @userId AND c.id = @sessionId";
+        QueryDefinition queryDefinition = new QueryDefinition(sqlQueryText)
+            .WithParameter("@userId", userId)
+            .WithParameter("@sessionId", sessionId); // Add parameter for sessionId
+
+        // Use the query iterator to find the specific session
+        FeedIterator<StudySession> queryResultSetIterator =
+            _sessionsContainer.GetItemQueryIterator<StudySession>(queryDefinition);
+
+        // update the session with the new messages
+        while (queryResultSetIterator.HasMoreResults)
+        {
+            FeedResponse<StudySession> currentResultSet = await queryResultSetIterator.ReadNextAsync();
+            currentResultSet.FirstOrDefault().Messages = serializedMessages;
+                await _sessionsContainer.ReplaceItemAsync(currentResultSet.FirstOrDefault(), currentResultSet.FirstOrDefault().id, new PartitionKey(userId));
+        }
+    }
+    
+    public async Task<StudySession> GetStudySession(string userId, string sessionId)
+    {
+        // Update the SQL query to include a condition for the sessionId
+        string sqlQueryText = "SELECT * FROM c WHERE c.UserId = @userId AND c.id = @sessionId";
+        QueryDefinition queryDefinition = new QueryDefinition(sqlQueryText)
+            .WithParameter("@userId", userId)
+            .WithParameter("@sessionId", sessionId); // Add parameter for sessionId
+
+        // Use the query iterator to find the specific session
+        FeedIterator<StudySession> queryResultSetIterator =
+            _sessionsContainer.GetItemQueryIterator<StudySession>(queryDefinition);
+
+        // Since we are looking for a specific session, we only need the first result
+        while (queryResultSetIterator.HasMoreResults)
+        {
+            FeedResponse<StudySession> currentResultSet = await queryResultSetIterator.ReadNextAsync();
+            foreach (StudySession session in currentResultSet)
+            {
+                // Return the first session that matches the criteria
+                return session;
+            }
+        }
+
+        // Return null or throw an exception if no session is found
+        return null;
+    }
+    
     public async Task<IEnumerable<StudySession>> GetStudySessions(string userId)
     {
-        return await _dbContext.StudySessions
-            .Where(s => s.UserId == userId)
-            .ToListAsync();
-    }
+        try
+        {
+            string sqlQueryText = "SELECT * FROM c WHERE c.UserId = @userId";
+            QueryDefinition queryDefinition = new QueryDefinition(sqlQueryText).WithParameter("@userId", userId);
+            FeedIterator<StudySession> queryResultSetIterator = _sessionsContainer.GetItemQueryIterator<StudySession>(queryDefinition);
 
-    public async Task<string> GetStudySessionId(string sessionName, string userId)
-    {
-        var sessionId = await _dbContext.StudySessions
-            .Where(s => s.UserId == userId && s.Name == sessionName)
-            .FirstOrDefaultAsync();
+            List<StudySession> studySessions = new List<StudySession>();
 
-        return sessionId?.id;
+            while (queryResultSetIterator.HasMoreResults)
+            {
+                FeedResponse<StudySession> currentResultSet = await queryResultSetIterator.ReadNextAsync();
+                foreach (StudySession session in currentResultSet)
+                {
+                    studySessions.Add(session);
+                }
+            }
+
+            return studySessions;
+        }
+        catch (Exception ex)
+        {
+            // Log the exception
+            Console.WriteLine($"Error fetching study sessions: {ex.Message}");
+            // Handle the error appropriately
+            return new List<StudySession>(); // return an empty list or throw the exception based on your error handling policy
+        }
     }
 
     public async Task<IEnumerable<UserDocument>> GetSessionDocuments(string? userId, string studySessionId)
     {
-        return await _dbContext.UserDocuments
-            .Where(d => d.SessionId == studySessionId)
-            .ToListAsync();
+        string sqlQueryText = "SELECT * FROM c WHERE c.SessionId = @sessionId";
+        QueryDefinition? queryDefinition =
+            new QueryDefinition(sqlQueryText).WithParameter("@sessionId", studySessionId);
+        FeedIterator<UserDocument>? queryResultSetIterator =
+            _filesContainer.GetItemQueryIterator<UserDocument>(queryDefinition);
+
+        List<UserDocument> documents = new();
+
+        while (queryResultSetIterator.HasMoreResults)
+        {
+            FeedResponse<UserDocument>? currentResultSet = await queryResultSetIterator.ReadNextAsync();
+            foreach (UserDocument? document in currentResultSet) documents.Add(document);
+        }
+
+        return documents;
     }
 
     public async Task<(Stream File, string FileType)> GetFile(string? userId, string studySessionId, string fileId)
     {
-        var blobContainerClient = _blobServiceClient.GetBlobContainerClient(ContainerName);
+        BlobContainerClient? blobContainerClient = _blobServiceClient.GetBlobContainerClient(_containerName);
 
         // Include userId in the blob's path
-        var blobClient = blobContainerClient.GetBlobClient($"{userId}/{studySessionId}/content/{fileId}");
+        BlobClient? blobClient = blobContainerClient.GetBlobClient($"{userId}/{studySessionId}/content/{fileId}");
 
-        Response<BlobDownloadInfo>? response = await blobClient.DownloadAsync();
+        Azure.Response<BlobDownloadInfo>? response = await blobClient.DownloadAsync();
         IDictionary<string, string>? metadata = blobClient.GetPropertiesAsync().Result.Value.Metadata;
 
         string fileType = metadata["fileType"]; // assuming you have stored file type in metadata
 
-        var memoryStream = new MemoryStream();
+        MemoryStream memoryStream = new MemoryStream();
         await response.Value.Content.CopyToAsync(memoryStream);
         memoryStream.Position = 0;
 

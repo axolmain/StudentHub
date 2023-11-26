@@ -1,12 +1,14 @@
-@page "/chat"
+@page "/chat/{sessionId}"
 @using StudentHub.Shared
 @using System.Text
+@using System.Text.Json
 @using Microsoft.AspNetCore.Authorization
-@using System.Net.Http.Headers
 @attribute [Authorize]
 
+@inject NavigationManager NavigationManager
 @inject HttpClient Http
 @inject AuthenticationStateProvider AuthenticationStateProvider
+
 <style>
     body, html {
         font-family: 'Arial', sans-serif;
@@ -26,7 +28,7 @@
 
     .chat-container {
         flex: 1;
-        height: 95%;
+        height: 84vh;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
@@ -107,59 +109,122 @@
 <h3>Chat with AI @sessionName</h3>
 <div class="chat-container">
     <div class="messages-area">
-        @foreach (var message in messages)
+        @if (messages != null)
         {
-            <div class="chat-message">
-                <span class="message-user">@message.UserId</span>: <span class="message-text">@message.Message</span>
-            </div>
+            @foreach (var message in messages)
+            {
+                <div class="chat-message">
+                    <span class="message-user">@message.UserId</span>: <span class="message-text">@message.Message</span>
+                </div>
+            }
         }
     </div>
     <div class="input-area">
-        <InputFile OnChange="SelectFile" class="input-file"/>
-        <button class="upload-button"
-                @onclick="UploadFile">
-            Upload
-        </button>
+        <button class="save-chat-button" @onclick="SaveChat">Save Chat</button>
         <input class="chat-input" @bind="newMessage"/>
         <button class="send-button" @onclick="SendMessage">Send</button>
     </div>
 </div>
 
-
 @code {
-    private List<ChatMessage>? messages = new();
-    private long maxFileSize = 1024 * 1024 * 3;
+    [Parameter] public string SessionId { get; set; }
+    private List<ChatMessage> messages = new();
     private string newMessage;
-    private AuthenticationState authState;
-    private string userId = "";
-    private bool fileUploaded = false;
-    string? userGuid;
+    private IBrowserFile? selectedFile;
     private string sessionName = "";
-
+    private AuthenticationState authState;
+    string? userId;
+    
     protected override async Task OnInitializedAsync()
     {
         authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
-        messages = await Http.GetFromJsonAsync<List<ChatMessage>>($"Chat/GetMessages?userId={authState.User.Identity?.Name}");
-        userGuid = await Http.GetStringAsync($"User/GetUserId?userName={authState.User.Identity?.Name}");
+        userId = await Http.GetStringAsync($"User/GetUserId?userName={authState.User.Identity?.Name}");
+        await FetchMessages(); // Existing call to fetch messages
+        await LoadSessionMessages(); // New call to load session messages
+    }
+    private async Task SaveChat()
+    {
+        try
+        {
+            var content = new StringContent(JsonSerializer.Serialize(messages), Encoding.UTF8, "application/json");
+            var response = await Http.PostAsync($"Chat/SaveChatSession?sessionId={SessionId}&userId={userId}", content);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                Console.WriteLine("Error saving chat session to the server.");
+            }
+            else
+            {
+                Console.WriteLine("Chat session saved successfully.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error while saving chat session: {ex.Message}");
+        }
+    }
+    
+    private async Task LoadSessionMessages()
+    {
+        try
+        {
+            messages = await Http.GetFromJsonAsync<List<ChatMessage>>($"Chat/GetSessionMessages?sessionId={SessionId}&userId={userId}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading session messages: {ex.Message}");
+    // Handle error (e.g., show a notification to the user)
+        }
+    }
+
+    private async Task FetchMessages()
+    {
+        try
+        {
+            messages = await Http.GetFromJsonAsync<List<ChatMessage>>($"Chat/GetMessages?sessionId={SessionId}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching messages: {ex.Message}");
+            // Handle error (e.g., show a notification to the user)
+        }
     }
 
     private async Task SendMessage()
     {
-        var message = new ChatMessage
+        try
         {
-            UserId = "You",
-            Message = newMessage,
-            Timestamp = DateTime.Now,
-            SessionId = selectedFile.Name.GetHashCode().ToString()
-        };
-        messages?.Add(message);
-        await GetResponse();
+            var message = new ChatMessage
+            {
+                UserId = "You", // Consider using the actual user's name or identifier
+                Message = newMessage,
+                Timestamp = DateTime.Now,
+                SessionId = SessionId
+            };
+
+            messages.Add(message);
+            
+
+            await PostMessage();
+            newMessage = ""; // Clear message after sending
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error sending message: {ex.Message}");
+            // Handle error
+        }
     }
 
-    private async Task GetResponse()
+    private async Task PostMessage()
     {
-        var content = new StringContent(newMessage, Encoding.UTF8, "text/plain");
-        var response = await Http.PostAsync($"octolearnapi/AiTools/sendChat?studySessionId={selectedFile.Name.GetHashCode()}&userGuid={userGuid}", content);
+        var chatMessage = new
+        {
+            message = newMessage // Assuming newMessage is the message you want to send
+        };
+
+        var jsonContent = new StringContent(JsonSerializer.Serialize(chatMessage), Encoding.UTF8, "application/json");
+
+        var response = await Http.PostAsync($"octolearnapi/AiTools/sendChat/{SessionId}/{userId}", jsonContent);
 
         if (response.IsSuccessStatusCode)
         {
@@ -170,50 +235,36 @@
                 UserId = "Pookie bot",
                 Message = responseMessage,
                 Timestamp = DateTime.Now,
-                SessionId = selectedFile.Name.GetHashCode().ToString()
+                SessionId = SessionId
             };
             messages?.Add(chatResponse);
         }
         else
         {
-            Console.WriteLine("Error");
+            Console.WriteLine("Error sending message to server.");
         }
         newMessage = "";
-    }
-
-    private IBrowserFile? selectedFile;
-
-    // Uploading a file to the DB
-    private Task SelectFile(InputFileChangeEventArgs e)
-    {
-        selectedFile = e.File;
-        return Task.CompletedTask;
     }
 
     private async Task UploadFile()
     {
         if (selectedFile != null)
         {
-    // Update session name with file name
-            sessionName = $" - reading {selectedFile.Name}";
-
-            await using var stream = selectedFile.OpenReadStream();
-            using var content = new MultipartFormDataContent();
-            using var fileContent = new StreamContent(stream);
-
-            fileContent.Headers.ContentDisposition = new ContentDispositionHeaderValue("form-data")
+            try
             {
-                Name = "file",
-                FileName = selectedFile.Name
-            };
-
-            content.Add(fileContent);
-
-            await Http.PostAsync($"octolearnapi/StudySession/makesession?sessionName={selectedFile.Name.GetHashCode()}&userGuid={userGuid}", content);
-
-    // Trigger the UI to update
-            StateHasChanged();
+                // File upload logic
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error uploading file: {ex.Message}");
+                // Handle error
+            }
         }
     }
 
+    private Task SelectFile(InputFileChangeEventArgs e)
+    {
+        selectedFile = e.File;
+        return Task.CompletedTask;
+    }
 }

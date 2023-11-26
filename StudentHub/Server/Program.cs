@@ -69,6 +69,8 @@ builder.Services.AddRazorPages();
 
 var app = builder.Build();
 
+app.UseCors("AllowAllOrigins");
+
 IDictionary<string, ISKFunction> CreateSkFunctionDictionary()
 {
     var dictionary = new Dictionary<string, ISKFunction>();

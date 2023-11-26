@@ -1,8 +1,10 @@
-﻿using Microsoft.AspNetCore.Components.Authorization;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using StudentHub.Server.Models;
 using StudentHub.Server.Services.DataService;
+using StudentHub.Shared;
 
 namespace StudentHub.Server.Controllers;
 
@@ -21,16 +23,37 @@ public class StudySessionController : Controller
     }
 
     [HttpPost("makesession")]
-    public async Task<IActionResult> MakeSession(string sessionName, string userGuid)
+    [Authorize]
+    public async Task<IActionResult> CreateSession([FromForm] List<IFormFile> files, [FromForm] string sessionName, [FromForm] string userId)
     {
-        var file = Request.Form.Files[0];
-        string fileName = file.FileName;
+        string studySessionId = await _dataService.CreateStudySession(sessionName, userId);
 
-        string studySessionId = await _dataService.CreateStudySession(sessionName, userGuid);
-        await using var stream = file.OpenReadStream();
-        await _dataService.UploadFileAsync(fileName, studySessionId, userGuid, stream);
+        foreach (IFormFile file in files)
+        {
+            using Stream stream = file.OpenReadStream();
+
+            await _dataService.UploadFileAsync(file.FileName, studySessionId, userId, stream);
+        }
 
         return Ok(studySessionId);
+    }
+    
+    
+    [HttpGet("getsession")]
+    public async Task<IActionResult> GetSession([FromQuery] string userId, [FromQuery] string sessionId)
+    {
+        var studySession = await _dataService.GetStudySession(userId, sessionId);
+        string studySessionId = studySession.id;
+
+        return Ok(studySession);
+    }
+
+
+    
+    [HttpGet("getallsessions")]
+    public async Task<ActionResult<IEnumerable<StudySession>>> GetAllSessions([FromQuery] string userGuid)
+    {
+        return Ok(await _dataService.GetStudySessions(userGuid));
     }
 
     [HttpPost("addfile")]
