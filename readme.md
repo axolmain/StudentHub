@@ -44,6 +44,18 @@ Here's a quick demo of the current state of StudentHub:
 [YouTube](https://youtu.be/QEqzxUKrGSY)
 
 ---
+## Network Architecture
+Student hub uses a client/server architecture. The client is a Blazor WebAssembly app that communicates with a server-side ASP.NET Core application. The client side renders the UI and interacts with the user, sending requests to the server for data retrieval, processing, and storage.
+
+### Network Protocol and Port Numbers
+Student hub uses HTTPS for communication between the client and the server. 
+
+
+### Message Format
+The client and server exchange data primarily in JSON format. For example, when a user upload a file to their chat, the client  serializes objects to JSON for HTTPS POST requests and deserializes JSON responses from the server.
+
+
+File Streaming: For file transfers, like the method you described for streaming files, the data is transferred as a binary stream. The server reads files from a data source as a stream and then transfers this stream to the client.
 
 ## 📦 Features
 
