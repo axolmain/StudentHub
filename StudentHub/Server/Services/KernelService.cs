@@ -66,7 +66,17 @@ public class KernelService
             return aiChatObjects;
         });
     }
+    
+    public Task<bool> CheckKernelExists(string studySessionId)
+    {
+        if(memoryCache.TryGetValue($"kernel_{studySessionId}", out _))
+        {
+            return Task.FromResult(true);
+        }
 
+        return Task.FromResult(false);
+    }
+    
     public async Task SaveMemoryAsync(ISemanticTextMemory? textMemory, string memoryCollectionName, string text, string id,
         string sourceFile = "")
     {

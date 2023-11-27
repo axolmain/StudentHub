@@ -7,7 +7,8 @@ public interface IDataService
 {
     public Task UploadFileAsync(string fileName, string studySessionId, string userId, Stream fileStream);
     public Task SaveChatSession(List<ChatMessage> messages, string sessionId, string userId);
-    public Task<string> CreateStudySession(string studySessionName, string userId);
+    public Task<bool> DeleteStudySession(string studySessionId, string userId);
+    public Task<string> CreateStudySession(string studySessionName, string userId, string fileName);
     public Task<IEnumerable<StudySession>> GetStudySessions(string userId);
     public Task<IEnumerable<UserDocument>> GetSessionDocuments(string? userId, string studySessionId);
     public Task<StudySession> GetStudySession(string userId, string sessionId);

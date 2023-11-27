@@ -1,0 +1,65 @@
+body {
+    background-color: #20232a; /* Adjusted to a slightly lighter shade for better contrast */
+    color: #abb2bf; /* Light grey text for readability */
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+h5 {
+    margin-bottom: 20px;
+    color: #0071c1; /* Using the primary color for headings */
+}
+
+.chat-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 20px;
+    padding-right: 20px; /* Added padding for consistency */
+    text-align: center;
+    position: relative;
+}
+.delete-icon {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-size: 20px;
+    color: red;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.chat-tile {
+    border: none;
+    padding: 20px;
+    border-radius: 10px;
+    background-color: #282c34; /* Darker elements for a subtle contrast */
+    box-shadow: 0 4px 8px 0 rgba(0,0,0,0.3); /* Slightly deeper shadow for depth */
+    transition: transform 0.2s, box-shadow 0.2s; /* Adding shadow transition for effect */
+    color: #abb2bf; /* Light grey text for readability */
+    cursor: pointer;
+}
+
+.chat-tile:hover .delete-icon {
+    opacity: 1;
+}
+
+.chat-tile:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 12px 0 rgba(0,0,0,0.4); /* Increased shadow on hover for a 'lifting' effect */
+}
+
+button {
+    background-color: #61dafb; /* Using the heading color for consistency */
+    color: #20232a; /* Dark text on light buttons */
+    border: none;
+    padding: 10px 20px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: background-color 0.2s, transform 0.2s;
+    margin-bottom: 20px; /* Added margin for spacing */
+}
+
+button:hover {
+    background-color: #4fa8d1; /* Darker shade on hover */
+    transform: translateY(-2px); /* Subtle 'press' effect */
+}

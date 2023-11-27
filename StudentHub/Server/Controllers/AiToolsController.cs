@@ -31,5 +31,22 @@ public class AiToolsController : ControllerBase
 
         return Ok(response);
     }
+    
+    [HttpGet]
+    [Route("checkEmbeddings/{studySessionId}")]
+    public async Task<IActionResult> CheckEmbeddingsReady([FromRoute] string studySessionId)
+    {
+        bool areEmbeddingsReady = await chatAiService.DoesKernelExist(studySessionId);
+        return Ok(areEmbeddingsReady);
+    }
+    
+    [HttpGet]
+    [Route("generateEmbeddings/{studySessionId}/{userGuid}")]
+    public async Task<IActionResult> GenerateEmbeddings([FromRoute] string studySessionId, [FromRoute] string userGuid)
+    {
+        await chatAiService.GenerateEmbeddingsAsync(studySessionId, userGuid);
+
+        return Ok();
+    }
 
 }

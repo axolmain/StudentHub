@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Plugins.Memory;
+using StudentHub.Server;
 using StudentHub.Server.Data;
 using StudentHub.Server.Models;
 using StudentHub.Server.Services;
@@ -53,6 +54,7 @@ builder.Services.AddSingleton<EmbeddingCacheService>();
 builder.Services.AddScoped<ChatAiService>();
 builder.Services.AddSingleton<IChatService, ChatService>();
 builder.Services.AddScoped<MemoryBuilder>();
+builder.Services.AddSignalR();
 
 var skFunctionDictionary = CreateSkFunctionDictionary();
 builder.Services.AddSingleton(skFunctionDictionary);
@@ -82,7 +84,6 @@ IDictionary<string, ISKFunction> CreateSkFunctionDictionary()
 if (app.Environment.IsDevelopment())
 {
     app.UseMigrationsEndPoint();
-    app.UseWebAssemblyDebugging();
 }
 else
 {
@@ -98,9 +99,11 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
+
 app.UseIdentityServer();
 app.UseAuthorization();
 
+app.MapHub<EmbeddingsHub>("/embeddingsHub");
 app.MapRazorPages();
 app.MapControllers();
 app.MapFallbackToFile("index.html");

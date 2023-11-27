@@ -12,6 +12,7 @@
         <PackageReference Include="Azure.Storage.Blobs" Version="12.19.0" />
         <PackageReference Include="DocX" Version="2.5.0" />
         <PackageReference Include="itext7" Version="8.0.1" />
+        <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="8.0.0" />
         <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.37.0" />
         <PackageReference Include="Microsoft.SemanticKernel" Version="1.0.0-beta8" />
         <PackageReference Include="Microsoft.SemanticKernel.Connectors.Memory.Weaviate" Version="1.0.0-beta8" />
@@ -20,6 +21,7 @@
         <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="7.0.13" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="7.0.13" />
         <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="7.0.11" />
+        <PackageReference Include="Syncfusion.EJ2.PdfViewer.AspNet.Core.OSX" Version="23.2.5" />
     </ItemGroup>
 
     <ItemGroup>

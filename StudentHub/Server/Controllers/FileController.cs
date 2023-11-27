@@ -25,12 +25,4 @@ public class FileController : ControllerBase
 
         return Ok();
     }
-
-    [HttpPost("makesession")]
-    public async Task<IActionResult> MakeSession([FromForm] string sessionName, [FromForm] string userId)
-    {
-        await _dataService.CreateStudySession(sessionName, userId);
-
-        return Ok();
-    }
 }

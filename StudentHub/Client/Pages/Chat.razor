@@ -1,130 +1,152 @@
 @page "/chat/{sessionId}"
+
 @using StudentHub.Shared
 @using System.Text
 @using System.Text.Json
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.SignalR.Client
 @attribute [Authorize]
 
 @inject NavigationManager NavigationManager
 @inject HttpClient Http
 @inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IJSRuntime JSRuntime
 
 <style>
-    body, html {
-        font-family: 'Arial', sans-serif;
-        margin: 0;
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-    }
-
     h3 {
-        color: #ffffff;
-        background-color: #5d3b8e; /* Cyberpunk Purple */
-        text-align: center;
-        padding: 1rem;
+        color: #333;
+        background-color: #ffffff; /* White background for the header */
+        text-align: left;
+        padding: 1rem 2rem;
         margin: 0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Soft shadow for depth */
     }
-
+    
     .chat-container {
         flex: 1;
-        height: 84vh;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
-        background-color: #1e1e2f; /* Dark background for chat */
+        background-color: #ffffff; /* White background for chat */
         padding: 20px;
         border-radius: 10px;
         margin: 20px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        color: #ffffff;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Consistent shadow for depth */
+        color: #333;
+        height: 85vh;
     }
-
+    
     .messages-area {
         flex-grow: 1;
+        height: 85vh;
         overflow-y: auto;
         padding: 10px;
+        background-color: #e9ecef; /* Lighter grey background for messages area */
+        border-radius: 8px; /* Slightly rounded corners for the chat area */
     }
-
+    
     .chat-message {
-        background-color: #252545; /* Slightly lighter background for messages */
+        background-color: #ffffff; /* White background for messages */
         padding: 10px 15px;
-        border-radius: 10px;
+        border-radius: 15px;
         margin-bottom: 10px;
+        border: 1px solid #e3e3e3; /* Slight border for message bubbles */
+        word-wrap: break-word; /* Ensure long words do not overflow */
+        max-width: calc(100% - 30px); /* Adjust max-width considering padding */
     }
-
+    
     .message-user {
-        font-weight: bold;
-        color: #00b894; /* Spotify Green */
+        font-weight: 600;
+        color: #5d3b8e; /* Purple color for usernames */
     }
-
+    
     .message-text {
-        color: #d7d7d7; /* Light text for readability */
+        color: #333; /* Dark grey color for text for better readability */
     }
-
+    
     .input-area {
         display: flex;
         align-items: center;
-        padding-top: 10px;
-    }
-
-    .upload-button {
-        background-color: #00b894; /* Spotify Green */
-        color: white;
-        border: none;
         padding: 10px;
-        border-radius: 5px;
-        margin-right: 10px;
-        cursor: pointer;
     }
-
-    .upload-button:hover {
-        background-color: #019568;
-    }
-
+    
     .chat-input {
         flex-grow: 1;
         padding: 10px;
-        border-radius: 5px;
-        border: 1px solid #ddd;
-        background-color: #1e1e2f; /* Match chat background */
-        color: #d7d7d7; /* Light text for readability */
+        border-radius: 20px;
+        border: 2px solid #5d3b8e; /* Purple border for the input */
+        background-color: #ffffff; /* White background for the input */
+        color: #333; /* Dark text for input */
         margin-right: 10px;
     }
-
+    
     .send-button {
-        background-color: #00b894; /* Spotify Green */
+        background-color: #5d3b8e; /* Purple background for the send button */
         color: white;
         border: none;
-        padding: 10px;
-        border-radius: 5px;
+        padding: 10px 20px;
+        border-radius: 20px; /* Rounded corners for buttons */
         cursor: pointer;
+        box-sizing: border-box; /* Include padding and border in the element's total width and height */
     }
-
+    
     .send-button:hover {
-        background-color: #019568;
+        background-color: #4c2f76; /* Slightly darker purple for the hover effect */
+    }
+    
+    .loading {
+      font-weight: bold;
+      display:inline-block;
+      font-family: monospace;
+      clip-path: inset(0 3ch 0 0);
+      animation: l 1s steps(4) infinite;
+    }
+    
+    @@keyframes l {
+      to {
+        clip-path: inset(0 -1ch 0 0)
+      }
     }
 </style>
 
-<h3>Chat with AI @sessionName</h3>
-<div class="chat-container">
-    <div class="messages-area">
-        @if (messages != null)
-        {
+<h3>@sessionName</h3>
+@if (!memoryCreated)
+{
+    <div class="loading">Generating Embeddings...</div>
+}
+<div class="study-session">
+    <div class="chat-container">
+        <div class="messages-area">
             @foreach (var message in messages)
             {
                 <div class="chat-message">
-                    <span class="message-user">@message.UserId</span>: <span class="message-text">@message.Message</span>
+                    <div class="message-user">@message.UserId</div>
+                    <div class="message-text">@message.Message</div>
                 </div>
             }
-        }
-    </div>
-    <div class="input-area">
-        <button class="save-chat-button" @onclick="SaveChat">Save Chat</button>
-        <input class="chat-input" @bind="newMessage"/>
-        <button class="send-button" @onclick="SendMessage">Send</button>
+            
+            @* The loading indicator is now outside of the foreach loop *@
+            @if (isLoading)
+            {
+                <div class="loading">Generating response...</div>
+            }
+        </div>
+        <div class="input-area">
+            <input class="chat-input" placeholder="Type your message here..." 
+                   @bind="newMessage" @onkeydown="EnterMessage" name="inputArea"/>
+            <button class="send-button" @onclick="SendMessage">Send</button>
+        </div>
     </div>
 </div>
+
+<script>
+    function scrollToBottom() {
+        var messageArea = document.querySelector('.messages-area');
+        if (messageArea) {
+            messageArea.scrollTop = messageArea.scrollHeight;
+        }
+    }
+</script>
 
 @code {
     [Parameter] public string SessionId { get; set; }
@@ -134,14 +156,55 @@
     private string sessionName = "";
     private AuthenticationState authState;
     string? userId;
-    
+    private bool isLoading;
+    private bool memoryCreated;
+    private HubConnection _hubConnection;
+
+
     protected override async Task OnInitializedAsync()
     {
         authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
         userId = await Http.GetStringAsync($"User/GetUserId?userName={authState.User.Identity?.Name}");
-        await FetchMessages(); // Existing call to fetch messages
-        await LoadSessionMessages(); // New call to load session messages
+        _ = LoadSessionMessages();
+        _hubConnection = new HubConnectionBuilder()
+            .WithUrl(NavigationManager.ToAbsoluteUri("/embeddingsHub"))
+            .WithAutomaticReconnect() // Enable automatic reconnection
+            .Build();
+
+        _hubConnection.On("EmbeddingsGenerated", async () =>
+        {
+            if (!messages.Any())
+            {
+                memoryCreated = true;
+                await InvokeAsync(StateHasChanged); // Refresh UI
+            }
+            await _hubConnection.DisposeAsync();
+            
+        });
+
+        await _hubConnection.StartAsync();
+        await CheckEmbeddingsStatus();
     }
+    
+    private async Task CheckEmbeddingsStatus()
+    {
+        var response = await Http.GetAsync($"octolearnapi/AiTools/checkEmbeddings/{SessionId}");
+        if (response.IsSuccessStatusCode)
+        {
+            var content = await response.Content.ReadAsStringAsync();
+            memoryCreated = bool.Parse(content);
+
+            if (memoryCreated && !messages.Any())
+            {
+                await LoadSessionMessages(); // Load messages if embeddings are already created
+            }
+        }
+        else
+        {
+            Console.WriteLine("Error checking embeddings status.");
+        }
+    }
+    
     private async Task SaveChat()
     {
         try
@@ -173,40 +236,33 @@
         catch (Exception ex)
         {
             Console.WriteLine($"Error loading session messages: {ex.Message}");
-    // Handle error (e.g., show a notification to the user)
         }
     }
-
-    private async Task FetchMessages()
-    {
-        try
-        {
-            messages = await Http.GetFromJsonAsync<List<ChatMessage>>($"Chat/GetMessages?sessionId={SessionId}");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error fetching messages: {ex.Message}");
-            // Handle error (e.g., show a notification to the user)
-        }
-    }
-
+    
     private async Task SendMessage()
     {
         try
         {
+            if (string.IsNullOrWhiteSpace(newMessage) || isLoading || !memoryCreated)
+                return;
+            
+            var messageToSend = newMessage;
+            newMessage = ""; // Clear message
             var message = new ChatMessage
             {
                 UserId = "You", // Consider using the actual user's name or identifier
-                Message = newMessage,
+                Message = messageToSend,
                 Timestamp = DateTime.Now,
                 SessionId = SessionId
             };
 
             messages.Add(message);
             
-
-            await PostMessage();
-            newMessage = ""; // Clear message after sending
+            isLoading = true; // Indicate loading
+            await PostMessage(messageToSend);
+            isLoading = false;
+            await JSRuntime.InvokeVoidAsync("scrollToBottom");
+            await Task.Run(SaveChat);
         }
         catch (Exception ex)
         {
@@ -214,12 +270,20 @@
             // Handle error
         }
     }
+    
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync("scrollToBottom");
+        }
+    }
 
-    private async Task PostMessage()
+    private async Task PostMessage(string messageToSend)
     {
         var chatMessage = new
         {
-            message = newMessage // Assuming newMessage is the message you want to send
+            message = messageToSend // Assuming newMessage is the message you want to send
         };
 
         var jsonContent = new StringContent(JsonSerializer.Serialize(chatMessage), Encoding.UTF8, "application/json");
@@ -246,25 +310,10 @@
         newMessage = "";
     }
 
-    private async Task UploadFile()
+    private async Task EnterMessage(KeyboardEventArgs e)
     {
-        if (selectedFile != null)
-        {
-            try
-            {
-                // File upload logic
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error uploading file: {ex.Message}");
-                // Handle error
-            }
-        }
+        if (e.Code == "Enter" || e.Code == "NumpadEnter")
+            await SendMessage();
     }
 
-    private Task SelectFile(InputFileChangeEventArgs e)
-    {
-        selectedFile = e.File;
-        return Task.CompletedTask;
-    }
 }

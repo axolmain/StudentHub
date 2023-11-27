@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Globalization;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -30,6 +31,7 @@ public class DataService : IDataService
         Database? database = _cosmosClient.GetDatabase("userDataMap");
         _filesContainer = database.GetContainer("sessionFiles");
         _sessionsContainer = database.GetContainer("studySessions");
+        
     }
 
     public async Task UploadFileAsync(string fileName, string studySessionId, string userId, Stream fileStream)
@@ -69,9 +71,28 @@ public class DataService : IDataService
 
         await _filesContainer.CreateItemAsync(document, new PartitionKey(studySessionId));
     }
+    
+    public async Task<(Stream File, string FileType)> GetFile(string? userId, string studySessionId, string fileId)
+    {
+        BlobContainerClient? blobContainerClient = _blobServiceClient.GetBlobContainerClient(_containerName);
+
+        // Include userId in the blob's path
+        BlobClient? blobClient = blobContainerClient.GetBlobClient($"{userId}/{studySessionId}/content/{fileId}");
+
+        Azure.Response<BlobDownloadInfo>? response = await blobClient.DownloadAsync();
+        IDictionary<string, string>? metadata = blobClient.GetPropertiesAsync().Result.Value.Metadata;
+
+        string fileType = metadata["fileType"]; // assuming you have stored file type in metadata
+
+        MemoryStream memoryStream = new MemoryStream();
+        await response.Value.Content.CopyToAsync(memoryStream);
+        memoryStream.Position = 0;
+
+        return (memoryStream, fileType);
+    }
 
 
-    public async Task<string> CreateStudySession(string studySessionName, string userId)
+    public async Task<string> CreateStudySession(string studySessionName, string userId, string fileName)
     {
         string id = Guid.NewGuid().ToString();
 
@@ -79,13 +100,63 @@ public class DataService : IDataService
         {
             SessionName = studySessionName,
             id = id,
-            UserId = userId
+            UserId = userId,
+            FileName = fileName,
+            LastMessageTimeStamp = DateTime.Now.ToString(CultureInfo.InvariantCulture),
         };
 
         await _sessionsContainer.CreateItemAsync(studySession, new PartitionKey(userId));
 
         return id;
     }
+    
+    public async Task<bool> DeleteStudySession(string studySessionId, string userId)
+    {
+        try
+        {
+            // Delete the study session document from the CosmosDB container
+            await _sessionsContainer.DeleteItemAsync<StudySession>(studySessionId, new PartitionKey(userId));
+
+            // Additionally, you might want to delete associated files from Azure Blob storage
+            // Retrieve all documents associated with the study session
+            var documents = await GetSessionDocuments(studySessionId);
+            BlobContainerClient blobContainerClient = _blobServiceClient.GetBlobContainerClient(ContainerName);
+
+            // Loop through the documents and delete them
+            foreach (var document in documents)
+            {
+                string blobName = $"{document.UserId}/{studySessionId}/content/{document.FileId}";
+                BlobClient blobClient = blobContainerClient.GetBlobClient(blobName);
+                await blobClient.DeleteIfExistsAsync();
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            // Log the exception, e.g., using ILogger
+            Console.WriteLine($"Error deleting study session: {ex.Message}");
+            return false;
+        }
+    }
+
+    private async Task<IEnumerable<UserDocument>> GetSessionDocuments(string studySessionId)
+    {
+        string sqlQueryText = "SELECT * FROM c WHERE c.SessionId = @sessionId";
+        QueryDefinition queryDefinition = new QueryDefinition(sqlQueryText).WithParameter("@sessionId", studySessionId);
+        FeedIterator<UserDocument> queryResultSetIterator = _filesContainer.GetItemQueryIterator<UserDocument>(queryDefinition);
+
+        List<UserDocument> documents = new List<UserDocument>();
+
+        while (queryResultSetIterator.HasMoreResults)
+        {
+            FeedResponse<UserDocument> currentResultSet = await queryResultSetIterator.ReadNextAsync();
+            documents.AddRange(currentResultSet);
+        }
+
+        return documents;
+    }
+
     
     public async Task SaveChatSession(List<ChatMessage> messages, string sessionId, string userId)
     {
@@ -105,7 +176,9 @@ public class DataService : IDataService
         while (queryResultSetIterator.HasMoreResults)
         {
             FeedResponse<StudySession> currentResultSet = await queryResultSetIterator.ReadNextAsync();
-            currentResultSet.FirstOrDefault().Messages = serializedMessages;
+            StudySession studySession = currentResultSet.FirstOrDefault();
+            studySession.Messages = serializedMessages;
+            studySession.LastMessageTimeStamp = messages.LastOrDefault().Timestamp.ToString(CultureInfo.InvariantCulture);
                 await _sessionsContainer.ReplaceItemAsync(currentResultSet.FirstOrDefault(), currentResultSet.FirstOrDefault().id, new PartitionKey(userId));
         }
     }
@@ -186,22 +259,5 @@ public class DataService : IDataService
         return documents;
     }
 
-    public async Task<(Stream File, string FileType)> GetFile(string? userId, string studySessionId, string fileId)
-    {
-        BlobContainerClient? blobContainerClient = _blobServiceClient.GetBlobContainerClient(_containerName);
-
-        // Include userId in the blob's path
-        BlobClient? blobClient = blobContainerClient.GetBlobClient($"{userId}/{studySessionId}/content/{fileId}");
-
-        Azure.Response<BlobDownloadInfo>? response = await blobClient.DownloadAsync();
-        IDictionary<string, string>? metadata = blobClient.GetPropertiesAsync().Result.Value.Metadata;
-
-        string fileType = metadata["fileType"]; // assuming you have stored file type in metadata
-
-        MemoryStream memoryStream = new MemoryStream();
-        await response.Value.Content.CopyToAsync(memoryStream);
-        memoryStream.Position = 0;
-
-        return (memoryStream, fileType);
-    }
+    
 }

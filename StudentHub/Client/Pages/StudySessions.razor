@@ -1,47 +1,35 @@
 @page "/studysessions"
 @using Microsoft.AspNetCore.Authorization
 @using StudentHub.Shared
-@using System.Text.Json
-@using System.Text
 
 @inject NavigationManager NavigationManager
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject HttpClient Http
+@inject IJSRuntime JSRuntime
 @attribute [Authorize]
 
-<style>
-    .chat-tiles {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 10px;
-    }
-    
-    .chat-tile {
-        border: 1px solid #ddd;
-        padding: 10px;
-        border-radius: 5px;
-        background-color: #f9f9f9;
-    }
-</style>
-
+<link href="StudySessions.razor.css" rel="stylesheet">
 <h3>Your Study Sessions</h3>
+<button @onclick="ShowNewChatPopup">New Chat</button>
+    <CreateChatPopUp @ref="createChatPopup"/>
 
 @if (studySessions.Count == 0)
 {
     <p>You have no study sessions</p>
     <br/>
-    <p>Click the button below to create one</p>
-    <button @onclick="ShowNewChatPopup">New Chat</button>
-    <CreateChatPopUp @ref="createChatPopup"/>
+    <p>Click the button above to create one!</p>
 }
 else
 {
     <div class="chat-tiles">
-        @foreach (var studySession in studySessions)
+        @foreach (var studySession in studySessions.OrderByDescending(s => s.LastMessageTimeStamp))
         {
-            <div class="chat-tile" @onclick="() => NavigateToChat(studySession.id)">
-                <h3>@studySession.FileName</h3>
-                <p>Last message sent at:</p>
+            <div class="chat-tile" @onclick="() => NavigateToChat(studySession)">
+                <i class="fas fa-times delete-icon" 
+                   @onclick="@(e => DeleteSession(studySession.id))"
+                   @onclick:stopPropagation></i>                
+                <h5>@studySession.SessionName</h5>
+                <p>File: @studySession.FileName</p>
                 <p>@studySession.LastMessageTimeStamp</p>
             </div>
         }
@@ -50,7 +38,6 @@ else
 
 @code {
     private List<StudySession> studySessions = new();
-    private AuthenticationState authState;
     string? userGuid;
 
     private CreateChatPopUp createChatPopup;
@@ -59,16 +46,28 @@ else
     {
         createChatPopup.Show(userGuid);
     }
+    
+    private async Task DeleteSession(string studySessionId)
+    {
+        var confirmed = await JSRuntime.InvokeAsync<bool>("confirm", "Are you sure you want to delete this session?");
+        if (confirmed)
+        {
+            var response = await Http.DeleteAsync($"octolearnapi/StudySession/deletesession/{studySessionId}/{userGuid}");
+            if (response.IsSuccessStatusCode)
+            {
+                studySessions.RemoveAll(s => s.id == studySessionId); // Remove the session from the local list
+                StateHasChanged(); // Refresh the component
+            }
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            AuthenticationState authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
             userGuid = await Http.GetStringAsync($"User/GetUserId?userName={authState.User.Identity?.Name}");
-            Console.WriteLine("yes");
             studySessions = await Http.GetFromJsonAsync<List<StudySession>>($"octolearnapi/StudySession/getallsessions?userGuid={userGuid}") ?? new List<StudySession>();
-            Console.WriteLine("yres" + studySessions.Count);
         }
         catch (Exception e)
         {
@@ -77,9 +76,13 @@ else
         }
     }
 
-    private void NavigateToChat(string chatId)
+    private void NavigateToChat(StudySession studySession)
     {
-        NavigationManager.NavigateTo($"/chat/{chatId}");
+    // Trigger embeddings generation and wait for it to complete
+        _ = Http.GetAsync($"octolearnapi/AiTools/generateEmbeddings/{studySession.id}/{studySession.UserId}");
+
+    // Navigate to the chat page
+        NavigationManager.NavigateTo($"/chat/{studySession.id}");
     }
 
 }

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Memory;
 
@@ -10,14 +11,18 @@ public class ChatAiService
     private readonly EmbeddingCacheService embeddingCacheService;
     private readonly KernelService kernelService;
     private AiChatObjects? _aiChatObjects;
+    private readonly IHubContext<EmbeddingsHub> hubContext;
+
 
     public ChatAiService(EmbeddingCacheService embeddingCacheService,
-        ChatHistoryService chatHistoryService,
-        KernelService kernelService, TextEmbeddingService? textEmbeddingService)
+        ChatHistoryService chatHistoryService, KernelService kernelService, 
+        TextEmbeddingService? textEmbeddingService, IHubContext<EmbeddingsHub> hubContext)
     {
         this.embeddingCacheService = embeddingCacheService;
         this.chatHistoryService = chatHistoryService;
         this.kernelService = kernelService;
+        this.hubContext = hubContext;
+
         ChatAiService.textEmbeddingService = textEmbeddingService;
     }
 
@@ -29,6 +34,19 @@ public class ChatAiService
         string responses = await GetChatResponse(_aiChatObjects, userQuestion, memoryCollectionName, studySessionId);
 
         return responses;
+    }
+    
+    public async Task<bool> DoesKernelExist(string studySessionId)
+    {
+        return await kernelService.CheckKernelExists(studySessionId);
+    }
+    
+    public async Task GenerateEmbeddingsAsync(string studySessionId, string userId)
+    {
+        _aiChatObjects = await kernelService.GetKernel(userId, studySessionId);
+        string memoryCollectionName = $"TestingForUser{userId}WithStudySessionId{studySessionId}";
+        await RefreshMemory(_aiChatObjects.SemanticTextMemory, userId, studySessionId, memoryCollectionName);
+        await hubContext.Clients.All.SendAsync("EmbeddingsGenerated");
     }
 
     private async Task RefreshMemory(ISemanticTextMemory? textMemory, string? userId, string studySessionId,
