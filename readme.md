@@ -41,7 +41,7 @@
 StudentHub is a dynamic platform designed for students. It provides a centralized hub for learning resources, aiding academic growth. Current it supports file upload, unique student sessions, and not much else in the way of helping a student grow. Its' future will bring updates for file storage, canvas integration, and provide a single go-to for students to learn and manage their workload.
 
 Here's a quick demo of the current state of StudentHub:
-[YouTube](https://youtu.be/cMMQheWi1bw)
+[YouTube](https://youtu.be/QEqzxUKrGSY)
 
 ---
 
@@ -453,10 +453,10 @@ dotnet run
 ## 🛣 Project Roadmap
 
 > - [ ] `ℹ️  Implement a more robust testing framework`
-> - [ ] `ℹ️  Improve mobile responsiveness`
+> - [x] `ℹ️  Improve mobile responsiveness`
 > - [ ] `ℹ️  Add more AI features`
-> - [ ] `ℹ️  Add a file system for users to upload files`
-> - [ ] `ℹ️  Add a system for viewing uploaded files`
+> - [x] `ℹ️  Add a file system for users to upload files`
+> - [x] `ℹ️  Add a system for viewing uploaded files`
 
 
 ---
